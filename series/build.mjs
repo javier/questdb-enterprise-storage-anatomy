@@ -21,6 +21,7 @@ const FIGURES = [
   { dir: "fig2-queries", lead: "A query reads what it can from the instance's own disk and the rest from the object store, and the mix shifts as data ages." },
   { dir: "fig3-replication", lead: "Two replicas join. Replication runs through the same object store: the primary uploads WAL segments, and each replica polls, downloads and applies them at its own pace." },
   { dir: "fig4-cluster-policy", lead: "The storage policy across the cluster: each instance converts its own copy, one instance uploads for everyone, and the DROP LOCAL seal travels through the WAL." },
+  { dir: "fig5-failover", lead: "Changing the primary, planned or not. In a switchover the operator demotes the primary, promotes a replica, does the maintenance and switches back. In a failure the primary dies, a replica is promoted, and the client replays what was never acknowledged." },
 ];
 
 const parts = FIGURES.map(({ dir, lead }) => {
