@@ -1,0 +1,10 @@
+[
+  ["wait", 800],
+  ["eval", "[...document.querySelectorAll('[data-readout]')].map((e) => e.textContent).join(' || ')"],
+  ["scroll", ".sa-f2 .iso-plate"],
+  ["wait", 1500],
+  ["eval", "[...document.querySelectorAll('[data-readout]')].map((e) => e.textContent).join(' || ')"],
+  ["shot", "/Users/j/prj/questdb/storage-anatomy/series/fig2-on-page.png", ".sa-f2 .iso-plate"],
+  ["scroll", ".sa-f1 .iso-plate"],
+  ["shot", "/Users/j/prj/questdb/storage-anatomy/series/fig1-on-page.png", ".sa-f1 .iso-plate"]
+]

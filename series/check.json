@@ -1,0 +1,8 @@
+[
+  ["wait", 800],
+  ["scroll", ".sa-f3 .iso-plate"],
+  ["wait", 1200],
+  ["scroll", ".sa-f4 .iso-plate"],
+  ["wait", 1200],
+  ["eval", "[...document.querySelectorAll('[data-readout]')].map((e) => e.textContent).join(' || ')"]
+]
