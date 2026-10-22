@@ -26,10 +26,9 @@ jobs:
       - name: Build site (light theme as default)
         run: |
           mkdir _site
-          cp -R series/. _site/
+          cp series/index.html _site/index-dark.html
+          cp series/index-light.html _site/index.html
           cd _site
-          mv index.html index-dark.html
-          mv index-light.html index.html
           # Swap links between the two pages so the theme toggles keep working
           find . -name '*.html' -exec sed -i \
             -e 's/index-light\.html/__LIGHT__/g' \
