@@ -1,4 +1,4 @@
-// Live behaviour of Fig 8. Time runs at one day per UNIT_SECONDS, as in Fig 1; a backup
+// Live behaviour of Fig 10. Time runs at one day per UNIT_SECONDS, as in Fig 2; a backup
 // runs every midnight. Hover a partition to see which backup holds it, or a backup's tray
 // to light everything its manifest names; KEEP LATEST sets backup.cleanup.keep.latest.n;
 // BACKUP NOW runs BACKUP DATABASE at once; Space pauses.
@@ -124,6 +124,8 @@ export function mount(stage, data, k, G) {
   controls?.addEventListener("click", onClick);
   // for checks and stills: a moment, paused, with an optional hover
   stage.seek = (v, opts = {}) => { u = v; if (opts.keep) setKeep(opts.keep); hovered = opts.hover ?? null; paused = true; draw(); };
+  // from the start, running: the series page's RESTART button
+  stage.restart = () => { u = data.u0 ?? PRESETS[GRAIN].start; paused = false; draw(); run(); };
   draw();
   return () => {
     observer.disconnect();

@@ -1,4 +1,4 @@
-// Fig 8's moving parts at time u. Pure: keyed items for what slides (backup trays and the
+// Fig 10's moving parts at time u. Pure: keyed items for what slides (backup trays and the
 // partition tiles on them), markup for the rest.
 //
 // The backup store is a stepped stand between the bench and the object store. Each kept
@@ -15,7 +15,7 @@ import { BENCH, DECK, FLOOR, LANE_Y, RULER, X_END, X_NOW, axisOf } from "../fig1
 import { WAL, nameOf, partitionsAt } from "../fig1/model.mjs";
 import { CLEANER, GRAIN, backupStats, frameOf, holderOf, stateOf } from "./backup.mjs";
 
-// The stand fills the slots where Fig 4's replicas stand, so Fig 8 seats its replica on a
+// The stand fills the slots where Fig 6's replicas stand, so Fig 10 seats its replica on a
 // bench in front of the primary and moves the ruler in front of that. Every figure runs
 // its own copy of the shared modules, so this changes no other figure.
 export const REPLICA_Y = 100;
@@ -24,7 +24,7 @@ RULER.y = REPLICA_Y + BENCH.d / 2 + 4;
 // the primary and its replica; the primary is also the cold storage manager here
 export const C6 = { lanes: [0, 1], manager: 0 };
 
-// the object store, deeper than Fig 1's, with the WAL tape along its front
+// the object store, deeper than Fig 2's, with the WAL tape along its front
 export const STORE6 = { ...DECK, d: 42 };
 export const WAL_Y = STORE6.y + STORE6.d - 7;
 const ease = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
@@ -104,7 +104,7 @@ export function makeBackups(k, P, parts) {
 
   // hovered: { p } a partition, or { row: backup time } a backup
   // opts.failed: backup times that failed; opts.outage: { from, to, catchUp }, the object store
-  // unreachable from `from` to `to`, then `catchUp` long to work off the backlog (Fig 7)
+  // unreachable from `from` to `to`, then `catchUp` long to work off the backlog (Fig 9)
   function render(u, keep, manual = [], hovered = null, opts = {}) {
     const { xOfAge } = axisOf(GRAIN);
     const F = frameOf(u, keep, manual, opts.failed ?? []);
@@ -209,7 +209,7 @@ export function makeBackups(k, P, parts) {
     wal += L(ticks.join(""), { tone: "lo" });
     const pins = kept.map((j) => xOfAge(u - list[j])).filter((x) => x >= xb - 0.1);
     for (const x of pins) wal += slab({ x: x - 0.6, y: WAL_Y + 2.4, w: 1.2, d: 1.2, r: 0.3 }, z, 2.6, { tone: "mid", crease: "lo" });
-    // WAL segments leaving the primary for the store, as in Fig 4, every second or so, and
+    // WAL segments leaving the primary for the store, as in Fig 6, every second or so, and
     // the replica fetching each one moments after it lands
     // In an outage each upload climbs, fails and falls back to retry; after it, the backlog
     // goes up at four times the pace and the replica downloads as fast.

@@ -1,5 +1,5 @@
-// Fig 6's moving parts, drawn from a recorded run at time t. Pure: markup per layer.
-// The benches stay as Fig 4 left them; what moves is the client and its store-and-forward
+// Fig 8's moving parts, drawn from a recorded run at time t. Pure: markup per layer.
+// The benches stay as Fig 6 left them; what moves is the client and its store-and-forward
 // ring, the frames and acks on its connection, its probes while there is no primary, the
 // WAL uploads and downloads through the store, index.msgpack changing hands, and the
 // operator's commands as they are issued.

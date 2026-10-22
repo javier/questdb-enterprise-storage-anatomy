@@ -21,7 +21,7 @@ const WIDTH = 700;
 const HEIGHT = 440;
 const U0 = 60.62; // just after a backup finished, while retention and the cleaner tidy up
 
-// Fig 1's single primary, with the object store deepened for the WAL tape and the backup
+// Fig 2's single primary, with the object store deepened for the WAL tape and the backup
 // store as a second deck in front of it.
 const P = k.fitProjection(
   [
@@ -69,7 +69,7 @@ const BODY = [
   feed(),
   `<g data-part="feed">${frame.feed}</g>`,
   `<g data-part="flying6">${b.flying}</g>`,
-  // the instance names, placed by hand: the replica's head stands where Fig 1 puts the
+  // the instance names, placed by hand: the replica's head stands where Fig 2 puts the
   // primary's words, so the primary's go beside its head, at the back
   parts.label([HEAD.x + HEAD.w, LANE_Y[0] - HEAD.d / 2, HEAD.h], "PRIMARY", { anchor: "start", dx: 8, dy: -6 }),
   parts.label([HEAD.x + HEAD.w, LANE_Y[0] - HEAD.d / 2, HEAD.h], "backups · WAL cleaner · cold uploads", { anchor: "start", dx: 8, dy: 4, sub: true }),
@@ -81,7 +81,7 @@ const BODY = [
 ];
 
 const LABEL =
-  "A primary and a replica in front of it. The primary uploads its WAL to a tape in the object store and the replica applies it from there, as in Fig 4. Behind them: the object store, holding the Parquet partitions of cold storage and the WAL tape, and in front of it the backup store, a stepped stand. Every midnight a backup runs: a checkpoint, then a diff against the last manifest, so only the partitions that changed since the last backup are uploaded, each onto a new tray at the same place along the axis as on the bench. Every other partition is a reference to the older backup that holds it. Retention keeps the latest five backups and sweeps every object no kept manifest references; objects of older backups that are still referenced stay, in the back row. The WAL cleaner then deletes WAL up to the oldest kept backup, which is as far back as a restore plus a WAL replay can reach.";
+  "A primary and a replica in front of it. The primary uploads its WAL to a tape in the object store and the replica applies it from there, as in Fig 6. Behind them: the object store, holding the Parquet partitions of cold storage and the WAL tape, and in front of it the backup store, a stepped stand. Every midnight a backup runs: a checkpoint, then a diff against the last manifest, so only the partitions that changed since the last backup are uploaded, each onto a new tray at the same place along the axis as on the bench. Every other partition is a reference to the older backup that holds it. Retention keeps the latest five backups and sweeps every object no kept manifest references; objects of older backups that are still referenced stay, in the back row. The WAL cleaner then deletes WAL up to the oldest kept backup, which is as far back as a restore plus a WAL replay can reach.";
 
 const CONTROL_CSS =
   ".sa-f6 .iso-plate{padding-top:56px;padding-bottom:64px}" +
@@ -133,7 +133,7 @@ const body =
   PAGE_CSS +
   `<div class="sa-plate sa-f6">` +
   k.plateHtml({
-    fig: "Fig 8",
+    fig: "Fig 10",
     title: "Backups and WAL cleanup",
     hint: "Hover a partition or a backup · space pauses",
     readout: storyOf(U0, KEEP_DEFAULT, [], null, (t) => clockOf(GRAIN, t)),

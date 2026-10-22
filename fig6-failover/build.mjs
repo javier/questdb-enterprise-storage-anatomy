@@ -20,10 +20,10 @@ const strip = (text) => text.replace(/^import .*$/gm, "").replace(/^export \{.*$
 const WIDTH = 700;
 const HEIGHT = 430;
 const GRAIN = "DAY";
-const U_FIX = 60.75; // the benches hold still, as in Fig 4
+const U_FIX = 60.75; // the benches hold still, as in Fig 6
 const STILL = ["planned", "durable", 9.6]; // the still: the client replays to the new primary
 
-// Fig 4's camera, widened to take in the client in front of the heads.
+// Fig 6's camera, widened to take in the client in front of the heads.
 const P = k.fitProjection(
   [
     [118, LANE_Y[0] + BENCH.d / 2, FLOOR], [118, DECK.y, DECK_TOP + 12],
@@ -69,7 +69,7 @@ const BODY = [
 ];
 
 const LABEL =
-  "The cluster from Fig 4 with a client in front of it, keeping every batch not yet acknowledged in a store-and-forward ring on its disk. In a planned switchover the operator switches the primary to a replica, which uploads what is pending and closes the client, then promotes a replica, which claims the store by writing index.msgpack with the next sync_id; the client replays its buffer to it, the old primary follows it, restarts for maintenance, and the roles are switched back. In an unplanned failure the primary crashes with transactions it never uploaded; a replica is promoted, the client replays everything past its acknowledged watermark, and the repaired node rejoins as a replica. With durable ACK nothing is lost; with plain ACK the batches acknowledged but never uploaded are lost.";
+  "The cluster from Fig 6 with a client in front of it, keeping every batch not yet acknowledged in a store-and-forward ring on its disk. In a planned switchover the operator switches the primary to a replica, which uploads what is pending and closes the client, then promotes a replica, which claims the store by writing index.msgpack with the next sync_id; the client replays its buffer to it, the old primary follows it, restarts for maintenance, and the roles are switched back. In an unplanned failure the primary crashes with transactions it never uploaded; a replica is promoted, the client replays everything past its acknowledged watermark, and the repaired node rejoins as a replica. With durable ACK nothing is lost; with plain ACK the batches acknowledged but never uploaded are lost.";
 
 const CONTROL_CSS =
   ".sa-f5 .iso-plate{padding-top:104px;padding-bottom:64px}.sa-f5 .iso-stage svg.iso-svg{overflow:hidden}" +
@@ -108,7 +108,7 @@ const KEYS = [
   ["Frame: one batch on the client's connection; its ack comes back as a dot", small, (sp, SP) => cell(SP, { tone: "lit", crease: "lo", lit: true })],
   ["A lit cell on the client: a frame kept on disk until it is acknowledged", small, (sp, SP) => cell(SP, { tone: "lit", crease: "lo", lit: true })],
   ["A grey frame on the dead primary: committed there but never uploaded", small, (sp, SP) => cell(SP, { tone: "lo", crease: "none" })],
-  ["WAL segment in the object store, as in Fig 4", small, (sp) => sp.chipSvg([0, 0, 0], false)],
+  ["WAL segment in the object store, as in Fig 6", small, (sp) => sp.chipSvg([0, 0, 0], false)],
 ];
 const keysHtml = `<span class="iso-keys sa-keys">${KEYS.map(([label, box, draw]) => `<span class="iso-key sa-key">${swatch(label, box, draw)}<span>${label}</span></span>`).join("")}</span>`;
 
@@ -123,7 +123,7 @@ const body =
   PAGE_CSS +
   `<div class="sa-plate sa-f5">` +
   k.plateHtml({
-    fig: "Fig 6",
+    fig: "Fig 8",
     title: "Failover",
     hint: "Real time · pick a scenario and the ack mode · space pauses",
     readout: storyOf(stillRec, STILL[2]),

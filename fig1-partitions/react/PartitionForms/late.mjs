@@ -1,4 +1,4 @@
-// Late writes, for Fig 1. Pure: everything is a function of the grain and the time u.
+// Late writes, for Fig 2. Pure: everything is a function of the grain and the time u.
 //
 // From the cold storage docs (concepts/cold-storage.md, "Immutability after DROP LOCAL"):
 //   - Before DROP LOCAL seals a partition, an out-of-order write can still land in it. If it
@@ -14,7 +14,7 @@ import { ANIM, SINGLE, eventsOf, nameOf, nominal } from "./model.mjs";
 import { DECK_TOP, FEED, LANE_Y, STORE_Y, X_NOW, axisOf } from "./parts.mjs";
 
 export const LATE = { every: 4, open: 0.55, sealed: 2.55, travel: 0.36, flash: 0.22 };
-const LATE_M = SINGLE.manager; // the instance that uploads, in Fig 1 the primary
+const LATE_M = SINGLE.manager; // the instance that uploads, in Fig 2 the primary
 
 // The two targets for the cycle that holds u, and when each row is sent.
 function cycleOf(g, u) {

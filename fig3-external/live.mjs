@@ -1,5 +1,5 @@
-// Live behaviour of Fig 3. The instance from Fig 2 keeps running; the reader picks who runs
-// the query, QuestDB or the external engines, and the time range and columns as in Fig 2.
+// Live behaviour of Fig 5. The instance from Fig 4 keeps running; the reader picks who runs
+// the query, QuestDB or the external engines, and the time range and columns as in Fig 4.
 // The external engines, Databricks, Trino, Athena, BigQuery and DuckDB, all read at once; the
 // query line cycles through their SQL dialects, one every SQL_STEP seconds. When nobody is driving, the tour alternates the readers over the same ranges, so what
 // only QuestDB can see shows on its own. Space pauses.
@@ -147,6 +147,8 @@ export function mount(stage, data, k, G) {
   controls?.addEventListener("click", onClick);
   // for checks and stills: a reader, a range, columns and a moment, paused
   stage.pick = (r, rk, c, at) => { choose(r, rk, c ?? cols); if (at !== undefined) { u = at; paused = true; } draw(); };
+  // from the start, running: the series page's RESTART button
+  stage.restart = () => { u = data.u0; t = 0; paused = false; draw(); run(); };
   choose(reader, rangeKey, cols);
   draw();
   return () => {

@@ -4,7 +4,7 @@
 // shape key changes; the rest comes back as markup. C is the cluster the figure shows:
 // a single primary (SINGLE) or the primary and two replicas (CLUSTER).
 
-import { CLUSTER, INSTANCES, PRIMARY, UNIT_SECONDS, WAL, dateOf, eventsOf, lampOf, laneState, managerAt, partitionsAt, storeState } from "./model.mjs";
+import { CLUSTER, INSTANCES, POLICY, PRIMARY, UNIT_SECONDS, WAL, dateOf, eventsOf, lampOf, laneState, managerAt, nominal, partitionsAt, storeState } from "./model.mjs";
 import { DECK_TOP, LANE_Y, STORE_Y, X_NOW, axisOf } from "./parts.mjs";
 
 export const ticksOf = (g, u) => { if (g !== "MONTH") return g === "HOUR" ? 12 : 24; const d = dateOf(g, Math.floor(u) + 1e-6); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate(); };
@@ -51,6 +51,26 @@ export function makeScene(k, P, parts) {
       if (cold.length === n && st.lift >= 1) example = p;
       if (cold.length && (lit || cold.length < n)) rods += parts.rodSvg(left + len / 2, cold, lit);
       if (lit && cold.length === n) example = null;
+    }
+    // With DROP REMOTE a year out, the partitions too thin to draw one by one, all past DROP
+    // LOCAL, show as one strip on every bench and on the deck, up to the DROP REMOTE mark
+    if (POLICY.dropRemote && ps.length) {
+      // from the mark up to the oldest partition drawn on its own
+      const drawn = lanes[C.lanes[0]];
+      const x1 = (drawn.length ? Math.min(...drawn.map((it) => it.x)) : xOfAge(u - ps[0])) - 0.6, x0 = xOfAge(nominal(g)[3]) + 0.3;
+      const len = q(x1 - x0);
+      if (len > 0.6) {
+        // thin slices a unit apart: each stands for the partitions at that age, local
+        // metadata only on the benches, Parquet partitions on the deck
+        const slices = (z0, h, style, y0, d) => {
+          let out = "";
+          for (let x = len - 0.8; x > 0; x -= 1.1) out += parts.slab({ x, y: y0, w: 0.6, d, r: 0.1 }, z0, h, style, 2, 0.1);
+          return out;
+        };
+        const pm = { tone: "blue", crease: "lo", className: "sa-pm" }, pq = { tone: "blue", crease: "lo", className: "sa-pq" };
+        for (const i of C.lanes) lanes[i].unshift({ id: "older", p: ps[0] - 1, x: x0, y: LANE_Y[i], len, open: false, key: "older" + len, html: () => slices(0, 4.6, pm, -12, 24) });
+        store.unshift({ id: "older-c", p: ps[0] - 1, x: x0, y: STORE_Y, len, key: "older" + len, html: () => slices(DECK_TOP, 3.6, pq, -9, 21) });
+      }
     }
     // one fully cold partition always shows its rod, so the read path is never hidden
     if (example !== null && hovered === null) {

@@ -23,7 +23,7 @@ const GRAIN = "DAY";
 const U_FIX = 60.75; // the benches in the WAL view: 2026-10-21 18:00, held still
 const WARM = 9; // seconds of WAL simulated before the first frame, so the bay is busy
 
-// A closer camera than Figs 1 and 2: the heads and the replication bay are the subject,
+// A closer camera than Figs 2 and 4: the heads and the replication bay are the subject,
 // with the youngest partitions beside them. The older end of the benches is cropped.
 const P = k.fitProjection(
   [
@@ -66,7 +66,7 @@ const BODY = [
   `<g data-part="dial">${parts.dialSvg(10)}</g>`,
   `<path data-part="hand" class="iso-line" data-tone="lit" data-free="start" d="${w.hand}" style="stroke-width:1"/>`,
   parts.hubSvg(),
-  parts.rulerSvg(GRAIN, []), // the stage marks belong to Figs 1, 2 and 4
+  parts.rulerSvg(GRAIN, []), // the stage marks belong to Figs 2, 2 and 4
   feed(),
   `<g data-part="rods">${frame.rods}</g>`,
   `<g data-part="feed">${frame.feed}</g>`,
@@ -78,7 +78,7 @@ const BODY = [
 ];
 
 const LABEL =
-  "The instance from Fig 1 joined by two replicas, each on its own bench with its own local disk, all sharing the object store. The primary's open WAL segment fills on a gauge on its face and its dial times the throttle window; each upload is compressed, lands in the replication bay on the object store and updates index.msgpack; each replica polls that index every second, downloads what is new and applies it, and shows how far behind it is.";
+  "The instance from Fig 2 joined by two replicas, each on its own bench with its own local disk, all sharing the object store. The primary's open WAL segment fills on a gauge on its face and its dial times the throttle window; each upload is compressed, lands in the replication bay on the object store and updates index.msgpack; each replica polls that index every second, downloads what is new and applies it, and shows how far behind it is.";
 
 const CONTROL_CSS =
   ".sa-f3 .iso-plate{padding-top:78px;padding-bottom:64px}.sa-f3 .iso-stage svg.iso-svg{overflow:hidden}" +
@@ -133,13 +133,13 @@ const body =
   PAGE_CSS +
   `<div class="sa-plate sa-f3">` +
   k.plateHtml({
-    fig: "Fig 4",
+    fig: "Fig 6",
     title: "Replication",
     hint: "Real time · pick load and settings · space pauses",
     readout: `${LOADS.light.label} · ${TUNINGS.fast.label} · segment ${sim.s.seg.id} open`,
     keys: [],
     caption:
-      "The instance from Figs 1 and 2 becomes the primary of a cluster, and two replicas join it. Replication goes through the same object store as cold storage, under its own root. Each commit lands in the primary's open WAL segment. The segment is uploaded when it reaches 2 MiB (cairo.wal.segment.rollover.size), or when the throttle window (replication.primary.throttle.window.duration) runs out, whichever comes first, so an open segment is uploaded again each window as it grows, until it rolls over. Uploads are compressed with zstd, about 8 to 1, and stored as wal{N}/{segment}.tar.zst, with the commit order in _txn_parts and an index.msgpack that says what exists. Each replica polls that index (replication.replica.poll.interval) on its own clock, downloads only what changed and applies it. With the defaults, a 1 second window and a 1 second poll, replicas run up to about 2 seconds behind. Tuned to 250 ms each, as shown first here, they stay within about 1 second, at the cost of more object store requests: one upload per window and one index read per poll. On GCS the window must stay at 1 second or more. The view runs in real time; uploads and downloads are drawn a little slower than they take, so each stays visible. Fig 5 shows the storage policy from Fig 1 running across this cluster, where the DROP LOCAL seal travels through this same WAL.",
+      "The instance from Figs 2 and 4 becomes the primary of a cluster, and two replicas join it. Replication goes through the same object store as cold storage, under its own root. Each commit lands in the primary's open WAL segment. The segment is uploaded when it reaches 2 MiB (cairo.wal.segment.rollover.size), or when the throttle window (replication.primary.throttle.window.duration) runs out, whichever comes first, so an open segment is uploaded again each window as it grows, until it rolls over. Uploads are compressed with zstd, about 8 to 1, and stored as wal{N}/{segment}.tar.zst, with the commit order in _txn_parts and an index.msgpack that says what exists. Each replica polls that index (replication.replica.poll.interval) on its own clock, downloads only what changed and applies it. With the defaults, a 1 second window and a 1 second poll, replicas run up to about 2 seconds behind. Tuned to 250 ms each, as shown first here, they stay within about 1 second, at the cost of more object store requests: one upload per window and one index read per poll. On GCS the window must stay at 1 second or more. The view runs in real time; uploads and downloads are drawn a little slower than they take, so each stays visible. Fig 7 shows the storage policy from Fig 2 running across this cluster, where the DROP LOCAL seal travels through this same WAL.",
     body: `${controls}<div class="iso-stage" tabindex="0" role="group" aria-label="Replication through the object store: switch views and load, Space pauses">${svg}</div>`,
   }).replace('<figcaption class="iso-legend">', '<figcaption class="iso-legend">' + keysHtml) +
   `</div>`;

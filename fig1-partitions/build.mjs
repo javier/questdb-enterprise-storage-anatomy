@@ -19,10 +19,10 @@ const HEIGHT = 430;
 const GRAIN = "DAY";
 const U0 = PRESETS[GRAIN].start;
 
-// Fig 1 is about one table on one instance: the primary alone, which is then its own
-// cold storage manager. Fig 4 adds the replicas to the empty slots behind it.
+// Fig 2 is about one table on one instance: the primary alone, which is then its own
+// cold storage manager. Fig 6 adds the replicas to the empty slots behind it.
 const C = SINGLE;
-POLICY.dropRemote = true; // Fig 1 alone draws DROP REMOTE, the end of a partition's life
+POLICY.dropRemote = true; // Fig 2 alone draws DROP REMOTE, the end of a partition's life
 const P = projectionOf(k, WIDTH, HEIGHT);
 const parts = makeParts(k, G, P);
 const render = makeScene(k, P, parts);
@@ -123,12 +123,12 @@ const body =
   PAGE_CSS +
   `<div class="sa-plate sa-f1">` +
   k.plateHtml({
-    fig: "Fig 1",
+    fig: "Fig 2",
     title: "Storage policy",
     hint: "Hover a partition · space pauses · → next stage",
     readout: clockOf(GRAIN, U0) + " · " + nextWorkText(GRAIN, U0),
     keys: [],
-    caption: `The table carries ${policySql(GRAIN)}. The stages are independent, and each falls due when a partition's end is older than its TTL; the instance checks every 5 minutes. At TO REMOTE it uploads the partition to the object store as Parquet, while it keeps serving its local copy, still native. At TO PARQUET it converts that local copy. Nothing leaves local disk until DROP LOCAL: the partition is sealed read-only, and the instance drops its local data and keeps only _pm and the symbol index, reading the data from the object store. At DROP REMOTE the partition leaves the table altogether, and cold storage reclaims its objects once the grace period, 30 minutes by default, has passed; it is the only stage that deletes data with no copy left anywhere. The table metadata in the head always stays local. The age axis is logarithmic, so recent partitions are wide and old ones close up. Fig 4 adds replicas to this picture.`,
+    caption: `The table carries ${policySql(GRAIN)}. The stages are independent, and each falls due when a partition's end is older than its TTL; the instance checks every 5 minutes. At TO REMOTE it uploads the partition to the object store as Parquet, while it keeps serving its local copy, still native. At TO PARQUET it converts that local copy. Nothing leaves local disk until DROP LOCAL: the partition is sealed read-only, and the instance drops its local data and keeps only _pm and the symbol index, reading the data from the object store. At DROP REMOTE the partition leaves the table altogether, and cold storage reclaims its objects once the grace period, 30 minutes by default, has passed; it is the only stage that deletes data with no copy left anywhere. The table metadata in the head always stays local. The age axis is logarithmic, so recent partitions are wide and old ones close up. Fig 6 adds replicas to this picture.`,
     body: `${grainSwitch}<div class="iso-stage" tabindex="0" role="group" aria-label="Storage policy on one instance: hover a partition to read its state, Space pauses time, the right arrow skips to the next stage">${svg}</div>`,
   }).replace('<figcaption class="iso-legend">', '<figcaption class="iso-legend">' + keysHtml) +
   `</div>`;

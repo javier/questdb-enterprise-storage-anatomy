@@ -24,9 +24,9 @@ const parts = makeParts(k, G, P);
 const render = makeFigure(k, P, parts, makeScene(k, P, parts));
 const { deck, benchBack, head, feed, staticLabels } = makeStage(k, G, P, parts);
 
-// One instance, as in Fig 1: the primary receives the query.
+// One instance, as in Fig 2: the primary receives the query.
 const NAMES = [["PRIMARY", "receives the SELECT"]];
-// The cluster keeps running from Fig 1's start, so the stills show a busy moment.
+// The cluster keeps running from Fig 2's start, so the stills show a busy moment.
 const U0 = 60.75; // 2026-10-21 18:00
 const range0 = RANGES.find((r) => r.key === DEFAULT_RANGE);
 const frame = render(DEFAULT_RANGE, DEFAULT_COLS, U0, null, 0);
@@ -34,7 +34,7 @@ const frame = render(DEFAULT_RANGE, DEFAULT_COLS, U0, null, 0);
 // Only the marks where the read path changes: TO PARQUET and DROP LOCAL.
 const TIER_MARKS = [1, 2];
 
-// Fig 1's machine, running, without its annotations; the labels say which instance
+// Fig 2's machine, running, without its annotations; the labels say which instance
 // runs the query.
 const lane = (i) => [
   benchBack(i),
@@ -63,7 +63,7 @@ const BODY = [
 ];
 
 const LABEL =
-  "The instance from Fig 1, still running, with one SELECT on it. A caliper in front of its bench marks the query's time range, relative to now, so partitions move through it as they age. Inside it, native partitions light the stretch of each selected column file the query scans, and Parquet partitions light only the column chunks of the row groups that overlap the range: local ones from its own disk, and for partitions past DROP LOCAL from cold storage, where the same chunks light on the Parquet partition and range reads travel down a rod to the instance.";
+  "The instance from Fig 2, still running, with one SELECT on it. A caliper in front of its bench marks the query's time range, relative to now, so partitions move through it as they age. Inside it, native partitions light the stretch of each selected column file the query scans, and Parquet partitions light only the column chunks of the row groups that overlap the range: local ones from its own disk, and for partitions past DROP LOCAL from cold storage, where the same chunks light on the Parquet partition and range reads travel down a rod to the instance.";
 
 const CONTROL_CSS =
   ".sa-f2 .iso-plate{padding-top:124px;padding-bottom:64px}" +
@@ -121,13 +121,13 @@ const body =
   PAGE_CSS +
   `<div class="sa-plate sa-f2">` +
   k.plateHtml({
-    fig: "Fig 2",
+    fig: "Fig 4",
     title: "Queries across tiers",
     hint: "Tours on its own · pick a range and columns · space pauses",
     readout: clockOf(GRAIN, U0) + " · " + planText(planOf(range0, DEFAULT_COLS, partitionsAt(GRAIN, U0), U0)),
     keys: [],
     caption:
-      "The same table and instance as Fig 1, still running, with one query on it. Its time range is relative to now, so partitions keep moving through it: the same query reads from different tiers as data ages. The query never names a tier: the instance that receives it serves every partition it can from its own disk and fetches the rest from the object store. Partitions outside the time range are pruned. A native partition is read from the files of the selected columns only. A Parquet partition is one data.parquet file; its _pm metadata maps every row group and column chunk to a byte range, so the query reads only the chunks of the selected columns in the row groups that overlap the range. For local Parquet those ranges come from local disk, even though the partition has been in cold storage since TO REMOTE. Past DROP LOCAL the same ranges come from cold storage by range reads, adjacent ranges coalesced into one request; nothing is downloaded whole, and chunks are dropped once the query releases them. The figure assumes four row groups per partition. With replicas (Fig 4), any instance can serve the query the same way.",
+      "The same table and instance as Fig 2, still running, with one query on it. Its time range is relative to now, so partitions keep moving through it: the same query reads from different tiers as data ages. The query never names a tier: the instance that receives it serves every partition it can from its own disk and fetches the rest from the object store. Partitions outside the time range are pruned. A native partition is read from the files of the selected columns only. A Parquet partition is one data.parquet file; its _pm metadata maps every row group and column chunk to a byte range, so the query reads only the chunks of the selected columns in the row groups that overlap the range. For local Parquet those ranges come from local disk, even though the partition has been in cold storage since TO REMOTE. Past DROP LOCAL the same ranges come from cold storage by range reads, adjacent ranges coalesced into one request; nothing is downloaded whole, and chunks are dropped once the query releases them. The figure assumes four row groups per partition. With replicas (Fig 6), any instance can serve the query the same way.",
     body: `${controls}<div class="iso-stage" tabindex="0" role="group" aria-label="A query across storage tiers: pick a time range and columns, hover a partition to see what is read from it">${svg}</div>`,
   }).replace('<figcaption class="iso-legend">', '<figcaption class="iso-legend">' + keysHtml) +
   `</div>`;

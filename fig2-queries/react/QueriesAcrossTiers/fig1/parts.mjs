@@ -288,30 +288,20 @@ export function makeParts(k, G, P) {
       ["Parquet partition to the object store", "local copy stays native"],
       ["local copy becomes Parquet"],
       ["local keeps metadata only"],
-      ["leaves the table", "objects reclaimed after 30 min"],
+      ["leaves the table"],
     ];
-    // Laid out from the heads leftwards: each label keeps clear of the heads and of the
-    // label before it, sliding left along the ruler; a slid label gets a leader to its mark.
+    // Each label sits under its mark unless that would crowd a neighbour or the heads: a
+    // pass from the heads leftwards pushes labels left, a pass back from the old end pushes
+    // them right again if the last one would leave the ruler; a moved label gets a leader.
     const GAP = 56;
-    let limit = X_NOW - GAP;
-    let under = 0; // where DROP LOCAL's words went
+    const stages = stagesOf(g);
+    const xs = [];
+    stages.forEach((_, n) => xs.push(Math.min(gates[n], (n ? xs[n - 1] : X_NOW) - GAP)));
+    for (let n = stages.length - 1; n >= 0; n--) xs[n] = Math.max(xs[n], n === stages.length - 1 ? X_END + 46 : xs[n + 1] + GAP);
     const leaders = [], pins = [];
-    stagesOf(g).forEach(([s, , short], n) => {
-      // DROP REMOTE sits close to DROP LOCAL on the log axis: its words stack under DROP
-      // LOCAL's, with a leader back to its own mark, rather than sliding off the left edge
-      if (n === 3) {
-        const x = under;
-        leaders.push(k.lineOnTop([gates[n], R.y + R.d - 1.2], [x, R.y + R.d - 1.2], z + 0.8, P));
-        pins.push(at([gates[n], R.y + R.d - 1.2, z + 0.8]));
-        const pt = [x, R.y + R.d, z];
-        out.push(label(pt, s + " " + short, { dy: 47 }));
-        what[n].forEach((line, j) => out.push(label(pt, line, { dy: 58 + j * 10, sub: true })));
-        return;
-      }
-      const x = Math.min(gates[n], limit);
-      if (n === 2) under = x;
-      limit = x - GAP;
-      if (gates[n] - x > 2) {
+    stages.forEach(([s, , short], n) => {
+      const x = xs[n];
+      if (Math.abs(gates[n] - x) > 2) {
         leaders.push(k.lineOnTop([gates[n], R.y + R.d - 1.2], [x, R.y + R.d - 1.2], z + 0.8, P));
         pins.push(at([x, R.y + R.d - 1.2, z + 0.8]));
       }

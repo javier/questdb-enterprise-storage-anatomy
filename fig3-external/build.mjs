@@ -23,7 +23,7 @@ const strip = (text) => text.replace(/^import .*$/gm, "").replace(/^export \{.*$
 
 const WIDTH = 700;
 const HEIGHT = 430;
-// Fig 2's camera, reaching back past the object store to the engines' shelf.
+// Fig 4's camera, reaching back past the object store to the engines' shelf.
 const P = k.fitProjection(
   [
     ...k.boxCorners(benchPlan(0), FLOOR, 0),
@@ -43,7 +43,7 @@ const scene = makeScene(k, P, parts);
 const render = makeExternal(k, P, parts, makeFigure(k, P, parts, scene), scene);
 const { deck, benchBack, head, feed, staticLabels } = makeStage(k, G, P, parts);
 
-const U0 = 60.75; // as in Fig 2
+const U0 = 60.75; // as in Fig 4
 const R0 = "45d", COLS0 = ["ts", "symbol", "price"];
 const frame = render("questdb", R0, COLS0, U0, null, 0);
 const TIER_MARKS = [1, 2];
@@ -77,7 +77,7 @@ const BODY = [
 ];
 
 const LABEL =
-  "Fig 2's instance and query, with external engines on a shelf on the far side of the object store: Databricks, Trino, Athena, BigQuery and DuckDB. Everything TO REMOTE uploaded is in cold storage as standard Parquet, one file per partition on Hive-style paths, so these engines can run the same query over those files in place, all at once. Pick the reader: QuestDB lights what it reads on its own bench and in cold storage, as in Fig 2; the external engines light only partitions in cold storage, on the deck, and their range reads run back off the deck to every terminal in parallel. A band along the deck front marks the sealed partitions, which never change, the uploaded ones not yet sealed, which a late write can replace, and the newest stretch, not uploaded yet, which only QuestDB can see.";
+  "Fig 4's instance and query, with external engines on a shelf on the far side of the object store: Databricks, Trino, Athena, BigQuery and DuckDB. Everything TO REMOTE uploaded is in cold storage as standard Parquet, one file per partition on Hive-style paths, so these engines can run the same query over those files in place, all at once. Pick the reader: QuestDB lights what it reads on its own bench and in cold storage, as in Fig 4; the external engines light only partitions in cold storage, on the deck, and their range reads run back off the deck to every terminal in parallel. A band along the deck front marks the sealed partitions, which never change, the uploaded ones not yet sealed, which a late write can replace, and the newest stretch, not uploaded yet, which only QuestDB can see.";
 
 const CONTROL_CSS =
   ".sa-f3x .iso-plate{padding-top:206px;padding-bottom:64px}" +
@@ -134,7 +134,7 @@ const body =
   PAGE_CSS +
   `<div class="sa-plate sa-f3x">` +
   k.plateHtml({
-    fig: "Fig 3",
+    fig: "Fig 5",
     title: "Parquet in place",
     hint: "Pick the reader, a range and columns · space pauses",
     readout: clockOf(GRAIN, U0) + " · QuestDB: " + planText(planOf(range0, COLS0, partitionsAt(GRAIN, U0), U0)),

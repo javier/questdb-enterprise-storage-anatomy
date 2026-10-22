@@ -1,5 +1,5 @@
-// Everything that changes in Fig 2, for one query at time u. Pure: the build calls it for
-// the stills, the live code every frame. Fig 1's live scene supplies the cluster at u
+// Everything that changes in Fig 4, for one query at time u. Pure: the build calls it for
+// the stills, the live code every frame. Fig 2's live scene supplies the cluster at u
 // (partitions ageing, uploads, conversions, the WAL stream); this adds what the query
 // reads, the caliper that marks its time range, and the range reads travelling down from
 // the object store for cold partitions. t is the screen time for the read animation.

@@ -1,4 +1,4 @@
-// Builds Fig 9 (a new replica from a backup) or Fig 10 (point-in-time recovery), which share
+// Builds Fig 11 (a new replica from a backup) or Fig 12 (point-in-time recovery), which share
 // this folder's model, drawing and live code:
 //   node recover/build.mjs --fig replica [--light]   writes fig9-replica/
 //   node recover/build.mjs --fig pitr [--light]      writes fig10-pitr/
@@ -99,18 +99,18 @@ const BODY = [
 
 const TEXT = pitr
   ? {
-      fig: "Fig 10",
+      fig: "Fig 12",
       title: "Point-in-time recovery",
-      label: "Fig 8's cluster, a primary and a replica, keeps running at the back. In front of a line on the floor, a new, empty instance recovers to a chosen moment: it restores the newest kept backup before it, eight partitions at a time from the backup steps, then replays WAL from the source's tape up to the target, so its data stops at the target post. With a fresh DataID it leaves for good: as the primary of a new cluster on its own, empty object store, or standalone. Partitions past DROP LOCAL read from a copy of the cold storage prefix.",
+      label: "Fig 10's cluster, a primary and a replica, keeps running at the back. In front of a line on the floor, a new, empty instance recovers to a chosen moment: it restores the newest kept backup before it, eight partitions at a time from the backup steps, then replays WAL from the source's tape up to the target, so its data stops at the target post. With a fresh DataID it leaves for good: as the primary of a new cluster on its own, empty object store, or standalone. Partitions past DROP LOCAL read from a copy of the cold storage prefix.",
       lead: "Recovering to a moment, without touching the cluster. A new instance restores a kept backup, replays WAL up to the target, and leaves with a fresh DataID: as the primary of a new cluster, or standalone.",
       hint: "Pick a mode and a target · space pauses",
       caption:
         "Point-in-time recovery builds a new instance in two boots and leaves the source cluster exactly as it was. The first boot, with an empty db/ and no replication configured, runs _backup_restore: the newest kept backup at or before the target, every partition its manifest names fetched from whichever backup prefix holds it, eight streams at a time by default. A partition past DROP LOCAL comes back as its _pm and index only. The second boot runs _recover_point_in_time with the source's replication.object.store and replication.recovery.timestamp: it replays WAL up to the last commit at or before the target, then takes a fresh DataID. From then on it has nothing to do with the source. As the primary of a new cluster it needs a brand new, empty object store of its own, since one that already holds replication data is refused; standalone, it replicates nothing. Either way, if the table uses cold storage, point cold.storage.object.store at a copy of the cold storage prefix, with the role left at refresher, never at the live prefix the source cluster still manages. The target can reach back only to the oldest kept backup, where the WAL cleaner has trimmed the tape; aim earlier and recovery reports success with data missing.",
     }
   : {
-      fig: "Fig 9",
+      fig: "Fig 11",
       title: "Replica from backup",
-      label: "Fig 8's cluster, a primary and a first replica, keeps running. A second replica joins on the front bench: it restores a kept backup, eight partitions at a time from the backup steps, then replays WAL from the store's tape up to now and keeps following the primary like the first replica. Starting from the oldest kept backup takes the same restore but a longer replay.",
+      label: "Fig 10's cluster, a primary and a first replica, keeps running. A second replica joins on the front bench: it restores a kept backup, eight partitions at a time from the backup steps, then replays WAL from the store's tape up to now and keeps following the primary like the first replica. Starting from the oldest kept backup takes the same restore but a longer replay.",
       lead: "Adding a replica without copying everything from the primary. A new instance restores a kept backup, replays the WAL since, and joins the cluster as replica 2.",
       hint: "Pick the backup to start from · space pauses",
       caption:
@@ -144,8 +144,8 @@ const clock = (t) => { const h = Math.floor((((t % 1) + 1) % 1) * 24); return `$
 const buttons = FIGURES[fig].map((m) => `<button type="button" role="radio" data-mode="${m}" aria-checked="${m === MODE0}">${MODES[m].label}</button>`).join("");
 const controls = pitr
   ? `<div class="sa-grain"><div class="sa-grain-row" role="radiogroup" aria-label="recovery">${buttons}</div>` +
-    `<div class="sa-grain-row"><label for="sa-f8-target">TARGET</label><input id="sa-f8-target" type="range" data-target min="${range.min}" max="${range.max}" step="${1 / 24}" value="${T_STILL}"><span data-target-text>${clock(T_STILL)}</span><button type="button" data-again>RUN AGAIN</button></div></div>`
-  : `<div class="sa-grain"><div class="sa-grain-row" role="radiogroup" aria-label="base backup">${buttons}<button type="button" data-again>RUN AGAIN</button></div></div>`;
+    `<div class="sa-grain-row"><label for="sa-f8-target">TARGET</label><input id="sa-f8-target" type="range" data-target min="${range.min}" max="${range.max}" step="${1 / 24}" value="${T_STILL}"><span data-target-text>${clock(T_STILL)}</span></div></div>`
+  : `<div class="sa-grain"><div class="sa-grain-row" role="radiogroup" aria-label="base backup">${buttons}</div></div>`;
 
 // the legend, drawn with the figure's own parts
 function swatch(label, box, draw) {

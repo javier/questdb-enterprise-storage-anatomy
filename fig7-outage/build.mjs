@@ -24,7 +24,7 @@ const WIDTH = 700;
 const HEIGHT = 440;
 const U0 = W0 + 1.4; // the still: well into the outage
 
-// Fig 8's camera, widened for the client past the end of the feed.
+// Fig 10's camera, widened for the client past the end of the feed.
 const P = k.fitProjection(
   [
     ...k.boxCorners(benchPlan(0), FLOOR, 0),
@@ -83,7 +83,7 @@ const BODY = [
 ];
 
 const LABEL =
-  "Fig 8's cluster, a primary and a replica with the object store and the backup stand behind them, and a durable-ACK client at the end of the feed, through three days without the object store. The store dims. The primary keeps ingesting and piles up the WAL it cannot upload; the replica falls behind and keeps serving what it has; the client's buffer fills its gauge, because no durable ack comes. Partitions due for TO REMOTE wait, partitions past DROP LOCAL keep their local data, and the nightly backups fail. When the store is back, the backlog goes up, the replica catches up, and the client's buffer empties.";
+  "Fig 10's cluster, a primary and a replica with the object store and the backup stand behind them, and a durable-ACK client at the end of the feed, through three days without the object store. The store dims. The primary keeps ingesting and piles up the WAL it cannot upload; the replica falls behind and keeps serving what it has; the client's buffer fills its gauge, because no durable ack comes. Partitions due for TO REMOTE wait, partitions past DROP LOCAL keep their local data, and the nightly backups fail. When the store is back, the backlog goes up, the replica catches up, and the client's buffer empties.";
 
 const CONTROL_CSS =
   ".sa-f7o .iso-plate{padding-top:40px;padding-bottom:64px}" +
@@ -108,7 +108,7 @@ function swatch(label, box, drawIt) {
 const chipBox = k.boxCorners({ x: -6, y: -2, w: 8, d: 4 }, 0, 6);
 const KEYS = [
   ["WAL the primary keeps because it could not upload it; it is purged only once uploaded", chipBox, (sp) => [0, 1, 2].map((j) => sp.chipSvg([-2 - (j % 2) * 3.8, 0, j * 1.7], j === 2)).join("")],
-  ["A lit cell on the client: a share of its store-and-forward buffer in use, as in Fig 6; it fills while no durable ack comes", k.boxCorners({ x: -1, y: -1, w: 2, d: 2 }, 0, 1.4), (sp, SP) => k.solidSvg(k.slabOf({ x: -0.36, y: -0.8, w: 0.72, d: 1.6, r: 0.12 }, 0, 1.4, SP, 2, 0.1), { tone: "lit", crease: "lo", lit: true })],
+  ["A lit cell on the client: a share of its store-and-forward buffer in use, as in Fig 8; it fills while no durable ack comes", k.boxCorners({ x: -1, y: -1, w: 2, d: 2 }, 0, 1.4), (sp, SP) => k.solidSvg(k.slabOf({ x: -0.36, y: -0.8, w: 0.72, d: 1.6, r: 0.12 }, 0, 1.4, SP, 2, 0.1), { tone: "lit", crease: "lo", lit: true })],
 ];
 const keysHtml = `<span class="iso-keys sa-keys">${KEYS.map(([label, box, d]) => `<span class="iso-key sa-key">${swatch(label, box, d)}<span>${label}</span></span>`).join("")}</span>`;
 
@@ -116,7 +116,7 @@ const body =
   PAGE_CSS +
   `<div class="sa-plate sa-f7o">` +
   k.plateHtml({
-    fig: "Fig 7",
+    fig: "Fig 9",
     title: "Object store outage",
     hint: "Runs on its own · space pauses",
     readout: storyOf7(U0, 0, clockOf(GRAIN, U0)),

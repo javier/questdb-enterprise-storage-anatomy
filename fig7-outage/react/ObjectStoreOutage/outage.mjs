@@ -1,5 +1,5 @@
-// The model behind Fig 7: the object store becomes unreachable for three days, then
-// recovers. Pure: everything is a function of u (days, PARTITION BY DAY, as in Fig 1).
+// The model behind Fig 9: the object store becomes unreachable for three days, then
+// recovers. Pure: everything is a function of u (days, PARTITION BY DAY, as in Fig 2).
 //
 // From the Enterprise code (checked 2026-10-22; nothing treats an outage as a state of its
 // own, each part retries on its own, and nothing local depends on the store):
@@ -30,7 +30,7 @@ export const CATCH_UP = 0.4; // the backlog worked off, as drawn
 export const U_START = 60.3;
 export const U_END = W1 + 1.3;
 export const FAILED = [61, 62, 63]; // the nightly backups that fail
-// the cluster from Fig 8, with no instance able to do manager work while the store is down
+// the cluster from Fig 10, with no instance able to do manager work while the store is down
 export const C7 = {
   lanes: [0, 1],
   manager: 0,
