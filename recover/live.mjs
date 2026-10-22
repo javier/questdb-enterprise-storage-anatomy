@@ -1,13 +1,13 @@
 // Live behaviour of Figs 7 and 8: one rebuild, played in seconds and looped, while the
-// source cluster keeps running. data.figure is "replica" (Fig 8: which backup to start
-// from) or "pitr" (Fig 9: new cluster or standalone, and the target on a slider). Changing
+// source cluster keeps running. data.figure is "replica" (Fig 9: which backup to start
+// from) or "pitr" (Fig 10: new cluster or standalone, and the target on a slider). Changing
 // anything starts the run again; when nobody is driving, the tour walks the modes. Space
 // pauses. `stage` is the .iso-stage element, `data` = { P, figure }, `k` the iso kit, `G` the
 // lathe kit.
 import { nameOf } from "../fig1-partitions/model.mjs";
 import { makeParts } from "../fig1-partitions/parts.mjs";
-import { GRAIN } from "../fig7-backups/backup.mjs";
-import { makeBackups } from "../fig7-backups/draw.mjs";
+import { GRAIN } from "../fig8-backups/backup.mjs";
+import { makeBackups } from "../fig8-backups/draw.mjs";
 import { FIGURES, stepsOf, targetRange } from "./restore.mjs";
 import { makeRestore, storyOf7 } from "./draw.mjs";
 

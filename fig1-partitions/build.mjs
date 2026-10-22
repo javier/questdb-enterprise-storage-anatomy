@@ -1,16 +1,16 @@
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import * as k from "/Users/j/.claude/skills/anatomy/kit/iso-kit.mjs";
-import * as G from "/Users/j/.claude/skills/anatomy/kit/lathe.mjs";
-import { kitScript } from "/Users/j/.claude/skills/anatomy/scripts/inline-kit.mjs";
-import { GRAIN_ORDER, PRESETS, SINGLE, clockOf, nextWorkText, policySql } from "./model.mjs";
+import * as k from "../kit/iso-kit.mjs";
+import * as G from "../kit/lathe.mjs";
+import { kitScript } from "../kit/inline-kit.mjs";
+import { GRAIN_ORDER, POLICY, PRESETS, SINGLE, clockOf, nextWorkText, policySql } from "./model.mjs";
 import { PQ_CSS, makeParts } from "./parts.mjs";
 import { itemsSvg, makeScene, ticksOf } from "./scene.mjs";
 import { AZIMUTH, DARK, makeStage, projectionOf } from "./stage.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const KIT_DIR = "/Users/j/.claude/skills/anatomy/kit";
+const KIT_DIR = fileURLToPath(new URL("../kit", import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
 const strip = (text) => text.replace(/^import .*$/gm, "").replace(/^export \{.*$/gm, "").replace(/^export /gm, "");
 
@@ -22,6 +22,7 @@ const U0 = PRESETS[GRAIN].start;
 // Fig 1 is about one table on one instance: the primary alone, which is then its own
 // cold storage manager. Fig 4 adds the replicas to the empty slots behind it.
 const C = SINGLE;
+POLICY.dropRemote = true; // Fig 1 alone draws DROP REMOTE, the end of a partition's life
 const P = projectionOf(k, WIDTH, HEIGHT);
 const parts = makeParts(k, G, P);
 const render = makeScene(k, P, parts);
@@ -48,12 +49,13 @@ const BODY = [
   feed(),
   `<g data-part="rods">${frame.rods}</g>`,
   `<g data-part="feed">${frame.feed}</g>`,
+  `<g data-part="late"></g>`,
   staticLabels(NAMES, { lanes: C.lanes, bay: false }),
   `<g data-part="labels">${parts.labelsSvg(GRAIN, { uploader: "uploaded by the primary, which keeps its local copy" })}</g>`,
 ];
 
 const LABEL =
-  "One QuestDB Enterprise instance, the primary, drawn as a bench with its own local disk, and an object store as a deck behind it. Rows from clients flow into the primary, and each partition is a pallet that moves along the bench as it ages, on a log scale. At the TO REMOTE mark the primary lifts a Parquet copy of the partition onto the deck while its local copy stays native. At TO PARQUET it converts its local copy to Parquet. At DROP LOCAL it drops the local data and keeps only the metadata, which reads from the Parquet partition on the deck.";
+  "One QuestDB Enterprise instance, the primary, drawn as a bench with its own local disk, and an object store as a deck behind it. Rows from clients flow into the primary, and each partition is a pallet that moves along the bench as it ages, on a log scale. At the TO REMOTE mark the primary lifts a Parquet copy of the partition onto the deck while its local copy stays native. At TO PARQUET it converts its local copy to Parquet. At DROP LOCAL it drops the local data and keeps only the metadata, which reads from the Parquet partition on the deck. At DROP REMOTE the partition leaves the table, and its Parquet partition dims on the deck until it is reclaimed.";
 
 const GRAIN_CSS =
   ".sa-f1 .iso-plate{padding-top:78px;padding-bottom:64px}" +
@@ -81,13 +83,14 @@ const stillSvg = (mode) =>
   });
 writeFileSync(join(HERE, `partition-forms-${theme}.svg`), stillSvg(theme));
 
-const DATA = { P, grain: GRAIN, cluster: "single" };
+const DATA = { P, grain: GRAIN, cluster: "single", dropRemote: true, lateWrites: true, uploader: "uploaded by the primary, which keeps its local copy" };
 const HERE_SRC = (file) => strip(readFileSync(join(HERE, file), "utf8"));
 const latheScript = () => `const G = (() => {\n${strip(readFileSync(join(KIT_DIR, "lathe.mjs"), "utf8"))}\nreturn { frameAlong, disc };\n})();\n`;
 const live = [
   HERE_SRC("model.mjs"),
   HERE_SRC("parts.mjs"),
   HERE_SRC("scene.mjs"),
+  HERE_SRC("late.mjs"),
   HERE_SRC("live.mjs"),
   `const KIT = { ${Object.keys(k).join(", ")} };`,
   `mount(document.querySelector(".sa-f1 .iso-stage"), ${JSON.stringify(DATA)}, KIT, G);`,
@@ -125,7 +128,7 @@ const body =
     hint: "Hover a partition · space pauses · → next stage",
     readout: clockOf(GRAIN, U0) + " · " + nextWorkText(GRAIN, U0),
     keys: [],
-    caption: `The table carries ${policySql(GRAIN)}. The stages are independent, and each falls due when a partition's end is older than its TTL; the instance checks every 5 minutes. At TO REMOTE it uploads the partition to the object store as Parquet, while it keeps serving its local copy, still native. At TO PARQUET it converts that local copy. Nothing leaves local disk until DROP LOCAL: the partition is sealed read-only, and the instance drops its local data and keeps only _pm and the symbol index, reading the data from the object store. The table metadata in the head always stays local. The age axis is logarithmic, so recent partitions are wide and old ones close up. Fig 4 adds replicas to this picture.`,
+    caption: `The table carries ${policySql(GRAIN)}. The stages are independent, and each falls due when a partition's end is older than its TTL; the instance checks every 5 minutes. At TO REMOTE it uploads the partition to the object store as Parquet, while it keeps serving its local copy, still native. At TO PARQUET it converts that local copy. Nothing leaves local disk until DROP LOCAL: the partition is sealed read-only, and the instance drops its local data and keeps only _pm and the symbol index, reading the data from the object store. At DROP REMOTE the partition leaves the table altogether, and cold storage reclaims its objects once the grace period, 30 minutes by default, has passed; it is the only stage that deletes data with no copy left anywhere. The table metadata in the head always stays local. The age axis is logarithmic, so recent partitions are wide and old ones close up. Fig 4 adds replicas to this picture.`,
     body: `${grainSwitch}<div class="iso-stage" tabindex="0" role="group" aria-label="Storage policy on one instance: hover a partition to read its state, Space pauses time, the right arrow skips to the next stage">${svg}</div>`,
   }).replace('<figcaption class="iso-legend">', '<figcaption class="iso-legend">' + keysHtml) +
   `</div>`;
@@ -139,6 +142,6 @@ console.log("wrote", file);
 const REACT = join(HERE, "react", "PartitionForms");
 mkdirSync(join(REACT, "kit"), { recursive: true });
 for (const name of ["iso-kit.mjs", "lathe.mjs", "iso.css"]) copyFileSync(join(KIT_DIR, name), join(REACT, "kit", name));
-for (const name of ["model.mjs", "parts.mjs", "scene.mjs", "live.mjs"]) copyFileSync(join(HERE, name), join(REACT, name));
+for (const name of ["model.mjs", "parts.mjs", "scene.mjs", "late.mjs", "live.mjs"]) copyFileSync(join(HERE, name), join(REACT, name));
 writeFileSync(join(REACT, "plate.generated.mjs"), `// Generated by fig1-partitions/build.mjs. Do not edit.\nexport const PLATE_HTML = ${JSON.stringify(body)};\nexport const DATA = ${JSON.stringify(DATA)};\n`);
 console.log("wrote react/PartitionForms");

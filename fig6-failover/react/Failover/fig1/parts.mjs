@@ -8,7 +8,7 @@
 // behind them all, with the cold Parquet copies on the left and the replication bay,
 // where WAL segments pass from the primary to the replicas, on the right.
 
-import { PRESETS, axisEnd, nominal } from "./model.mjs";
+import { PRESETS, axisEnd, nominal, stagesOf } from "./model.mjs";
 
 export const X_NOW = 156;
 export const X_END = -128;
@@ -226,15 +226,17 @@ export function makeParts(k, G, P) {
 
   // The marks on each bench for a preset: a line across, a stop at the back, a stop at the
   // front, and the stage engraved on the front margin, ending at the line.
-  // only: which stages to mark (indices into the policy), so a figure can show just some
-  function marksBack(i, g, only = [0, 1, 2]) {
+  // only: which stages to mark (indices into the policy), so a figure can show just some;
+  // by default every stage the policy has
+  const every = (g) => stagesOf(g).map((_, n) => n);
+  function marksBack(i, g, only = every(g)) {
     const gates = only.map((n) => axisOf(g).gates[n]);
     const y0 = LANE_Y[i] - BENCH.d / 2, y1 = y0 + BENCH.d;
     let out = L(gates.map((x) => k.lineOnTop([x, y0 + 2.2], [x, y1 - 2.2], 0, P)).join(""), { tone: "mid" });
     for (const x of gates) out += slab({ x: x - 1.4, y: y0 + 0.6, w: 2.8, d: 1.8, r: 0.4 }, 0, 2, { tone: "hi", crease: "lo" }, 2, 0.3);
     return out;
   }
-  function marksFront(i, g, only = [0, 1, 2]) {
+  function marksFront(i, g, only = every(g)) {
     const gates = only.map((n) => axisOf(g).gates[n]);
     const y1 = LANE_Y[i] + BENCH.d / 2;
     return gates.map((x) => slab({ x: x - 1.4, y: y1 - 2.4, w: 2.8, d: 1.8, r: 0.4 }, 0, 2, { tone: "hi", crease: "lo" }, 2, 0.3)).join("");
@@ -242,7 +244,7 @@ export function makeParts(k, G, P) {
 
   // The ruler on the floor in front: a tick per partition boundary, a stop and the stage
   // with its TTL at each mark, and what the partition is between the marks.
-  function rulerSvg(g, only = [0, 1, 2]) {
+  function rulerSvg(g, only = every(g)) {
     const { xOfAge } = axisOf(g);
     const gates = only.map((n) => axisOf(g).gates[n]);
     const out = [];
@@ -286,14 +288,28 @@ export function makeParts(k, G, P) {
       ["Parquet partition to the object store", "local copy stays native"],
       ["local copy becomes Parquet"],
       ["local keeps metadata only"],
+      ["leaves the table", "objects reclaimed after 30 min"],
     ];
     // Laid out from the heads leftwards: each label keeps clear of the heads and of the
     // label before it, sliding left along the ruler; a slid label gets a leader to its mark.
     const GAP = 56;
     let limit = X_NOW - GAP;
+    let under = 0; // where DROP LOCAL's words went
     const leaders = [], pins = [];
-    PRESETS[g].stages.forEach(([s, , short], n) => {
+    stagesOf(g).forEach(([s, , short], n) => {
+      // DROP REMOTE sits close to DROP LOCAL on the log axis: its words stack under DROP
+      // LOCAL's, with a leader back to its own mark, rather than sliding off the left edge
+      if (n === 3) {
+        const x = under;
+        leaders.push(k.lineOnTop([gates[n], R.y + R.d - 1.2], [x, R.y + R.d - 1.2], z + 0.8, P));
+        pins.push(at([gates[n], R.y + R.d - 1.2, z + 0.8]));
+        const pt = [x, R.y + R.d, z];
+        out.push(label(pt, s + " " + short, { dy: 47 }));
+        what[n].forEach((line, j) => out.push(label(pt, line, { dy: 58 + j * 10, sub: true })));
+        return;
+      }
       const x = Math.min(gates[n], limit);
+      if (n === 2) under = x;
       limit = x - GAP;
       if (gates[n] - x > 2) {
         leaders.push(k.lineOnTop([gates[n], R.y + R.d - 1.2], [x, R.y + R.d - 1.2], z + 0.8, P));

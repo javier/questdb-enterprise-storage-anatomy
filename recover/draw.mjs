@@ -1,16 +1,16 @@
 // The moving parts of Figs 7 and 8 at second s of a run. Pure: keyed items for the new
 // instance's partitions, markup for the rest.
 //
-// The source is Fig 7 held at one moment: its primary and its first replica, the object store
+// The source is Fig 8 held at one moment: its primary and its first replica, the object store
 // with the WAL tape, and the backup stand. Both keep running. The new instance stands on a
 // third bench at the front. Its partitions keep the source's places along the age axis, so a
-// recovered node's data visibly stops at the target. In Fig 9 a line on the floor marks the
+// recovered node's data visibly stops at the target. In Fig 10 a line on the floor marks the
 // boundary of the source cluster, and the recovered node's own store stands beside it.
 
 import { BENCH, FLOOR, HEAD, LANE_Y, RULER, X_NOW, axisOf } from "../fig1-partitions/parts.mjs";
 import { nameOf } from "../fig1-partitions/model.mjs";
-import { GRAIN, stateOf } from "../fig7-backups/backup.mjs";
-import { BACK, STORE6, WAL_Y, rowAt } from "../fig7-backups/draw.mjs";
+import { GRAIN, stateOf } from "../fig8-backups/backup.mjs";
+import { BACK, STORE6, WAL_Y, rowAt } from "../fig8-backups/draw.mjs";
 import { FLY, MODES, SOURCE_U, runOf } from "./restore.mjs";
 
 // the new instance on a third bench at the front, and the ruler in front of it

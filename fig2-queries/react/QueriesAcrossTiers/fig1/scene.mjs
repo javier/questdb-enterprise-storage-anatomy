@@ -4,7 +4,7 @@
 // shape key changes; the rest comes back as markup. C is the cluster the figure shows:
 // a single primary (SINGLE) or the primary and two replicas (CLUSTER).
 
-import { CLUSTER, INSTANCES, PRIMARY, UNIT_SECONDS, WAL, dateOf, eventsOf, lampOf, laneState, partitionsAt, storeState } from "./model.mjs";
+import { CLUSTER, INSTANCES, PRIMARY, UNIT_SECONDS, WAL, dateOf, eventsOf, lampOf, laneState, managerAt, partitionsAt, storeState } from "./model.mjs";
 import { DECK_TOP, LANE_Y, STORE_Y, X_NOW, axisOf } from "./parts.mjs";
 
 export const ticksOf = (g, u) => { if (g !== "MONTH") return g === "HOUR" ? 12 : 24; const d = dateOf(g, Math.floor(u) + 1e-6); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate(); };
@@ -28,16 +28,24 @@ export function makeScene(k, P, parts) {
       const left = x0 + gap, len = x1 - x0 - (open ? gap : 2 * gap);
       if (len < 0.4) continue;
       const cold = [];
+      const st = storeState(g, p, u, C);
+      // DROP REMOTE: gone from every bench at once; its Parquet partition dims through the
+      // grace period, then fades as the objects are reclaimed
+      if (st.gone >= 1) continue;
       for (const i of C.lanes) {
         const s = laneState(g, p, i, u, C);
+        if (s.gone > 0) continue;
         const key = [q(len), open ? 1 : 0, q(s.m), q(s.sealed), q(s.evict), lit ? 1 : 0].join();
         lanes[i].push({ id: "p" + p, p, x: left, y: LANE_Y[i], len: q(len), open, key, html: () => parts.blockSvg(q(len), { m: s.m, sealed: s.sealed, evict: s.evict, lit, open }) });
         if (s.evict >= 0.7) cold.push(i);
       }
-      const st = storeState(g, p, u, C);
-      if (st.lift >= 1) store.push({ id: "c" + p, p, x: left, y: STORE_Y, len: q(len), key: [q(len), lit ? 1 : 0].join(), html: () => parts.copySvg(q(len), DECK_TOP, lit) });
+      if (st.lift >= 1) {
+        const dim = st.deleting || st.gone > 0;
+        const fade = st.gone > 0 ? 1 - st.gone : dim ? 0.45 : 1;
+        store.push({ id: "c" + p, p, x: left, y: STORE_Y, len: q(len), opacity: fade, key: [q(len), lit ? 1 : 0].join(), html: () => parts.copySvg(q(len), DECK_TOP, lit) });
+      }
       else if (st.lift >= 0) {
-        const [, y, z] = parts.flight([left, LANE_Y[C.manager], 1.2], [left, STORE_Y, DECK_TOP], st.lift);
+        const [, y, z] = parts.flight([left, LANE_Y[eventsOf(g, p, C).upBy], 1.2], [left, STORE_Y, DECK_TOP], st.lift);
         copy += `<g data-p="${p}" transform="${k.translateAlong(P, [left, y, 0])}">${parts.copySvg(len, z, lit, false)}</g>`;
       }
       if (cold.length === n && st.lift >= 1) example = p;
@@ -67,6 +75,7 @@ export function makeScene(k, P, parts) {
         const j = (u - t - WAL.up) / WAL.period;
         if (j < WAL.keep) bay.push({ j, html: parts.chipSvg(parts.baySlot(j), lit) });
         for (const i of replicas) {
+          if (managerAt(C, u).down === i) continue; // an instance that is down fetches nothing
           const s = (u - t - WAL.up - WAL.wait[i]) / WAL.down;
           if (s >= 0 && s < 1) flying.push(parts.chipSvg(parts.flight(parts.baySlot(WAL.wait[i] / WAL.period), parts.PORT(i), s), lit));
         }
@@ -81,4 +90,4 @@ export function makeScene(k, P, parts) {
 }
 
 // Serialise keyed items for the static build.
-export const itemsSvg = (k, P, items) => items.map((it) => `<g data-id="${it.id}" data-p="${it.p}" transform="${k.translateAlong(P, [it.x, it.y, 0])}">${it.html()}</g>`).join("");
+export const itemsSvg = (k, P, items) => items.map((it) => `<g data-id="${it.id}" data-p="${it.p}"${(it.opacity ?? 1) < 0.999 ? ` opacity="${it.opacity.toFixed(2)}"` : ""} transform="${k.translateAlong(P, [it.x, it.y, 0])}">${it.html()}</g>`).join("");

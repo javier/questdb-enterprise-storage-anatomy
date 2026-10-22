@@ -2008,7 +2008,15 @@ const PRESETS = {
   },
 };
 const GRAIN_ORDER = ["HOUR", "DAY", "MONTH"];
-const policySql = (g) => "PARTITION BY " + g + " · STORAGE POLICY(" + PRESETS[g].stages.map(([s, t]) => s + " " + t).join(", ") + ")";
+// The fourth stage, DROP REMOTE: the partition leaves the table, and cold storage GC reclaims
+// its remote objects after a grace period. Only Fig 1 draws it: its build and live code set
+// POLICY.dropRemote before anything else runs, and every figure runs its own copy of this
+// module, so the others keep three stages and their axis.
+const POLICY = { dropRemote: false };
+const DROP_REMOTE = { HOUR: ["DROP REMOTE", "1 WEEK", "1W"], DAY: ["DROP REMOTE", "3 MONTHS", "3M"], MONTH: ["DROP REMOTE", "3 YEARS", "3Y"] };
+const GC_GRACE_MINUTES = 30; // cold.storage.gc.partition.grace.period
+const stagesOf = (g) => (POLICY.dropRemote ? [...PRESETS[g].stages, DROP_REMOTE[g]] : PRESETS[g].stages);
+const policySql = (g) => "PARTITION BY " + g + " · STORAGE POLICY(" + stagesOf(g).map(([s, t]) => s + " " + t).join(", ") + ")";
 
 const INSTANCES = [
   { name: "primary", check: 0.4 },
@@ -2048,19 +2056,22 @@ const unitsBetween = (g, a, b) => {
 // The exact TTL of stage k for partition p, in partition widths (calendar months vary).
 function ttlOf(g, k, p) {
   const end = dateOf(g, p + 1 + 1e-9);
-  if (g === "HOUR") return [1, 6, 24][k];
+  if (g === "HOUR") return [1, 6, 24, 168][k];
   if (g === "DAY") {
     if (k === 0) return 1 / 24;
     if (k === 1) return 3;
-    const later = Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, end.getUTCDate());
+    const months = k === 2 ? 1 : 3;
+    const later = Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + months, end.getUTCDate());
     return unitsBetween(g, end.getTime(), later);
   }
   if (k === 0) return 1 / daysIn(end.getUTCFullYear(), end.getUTCMonth());
-  return [0, 1, 12][k];
+  return [0, 1, 12, 36][k];
 }
 // The nominal TTLs, where the marks on the floor are drawn.
-const nominal = (g) => ({ HOUR: [1, 6, 24], DAY: [1 / 24, 3, 30], MONTH: [1 / 30.44, 1, 12] })[g];
-const axisEnd = (g) => 2 * nominal(g)[2];
+const NOMINAL = { HOUR: [1, 6, 24, 168], DAY: [1 / 24, 3, 30, 91.3], MONTH: [1 / 30.44, 1, 12, 36] };
+const nominal = (g) => NOMINAL[g].slice(0, POLICY.dropRemote ? 4 : 3);
+// the axis runs a little past the last stage, so a partition is seen leaving
+const axisEnd = (g) => (POLICY.dropRemote ? 1.12 * NOMINAL[g][3] : 2 * NOMINAL[g][2]);
 
 const minutesToU = (g, m) => m / PRESETS[g].minutes;
 function nextCheck(g, i, t) {
@@ -2068,23 +2079,108 @@ function nextCheck(g, i, t) {
   const phase = minutesToU(g, INSTANCES[i].check);
   return phase + Math.ceil((t - phase) / step - 1e-9) * step;
 }
+// A cluster can carry a schedule, repeating every C.schedule.period, of which instance holds
+// the cold storage manager role (manager: -1 while none does) and which instance is down:
+//   { period, segments: [{ from, to, manager, down }] }, the segments tiling [0, period).
+// A check by instance i then waits until i is up, and manager work waits for whoever holds
+// the role at that moment; with no manager nothing is uploaded, sealed or reclaimed.
+function segmentAt(C, t) {
+  const { period, segments } = C.schedule;
+  const n = Math.floor(t / period), r = t - n * period;
+  const s = segments.find((x) => r >= x.from - 1e-9 && r < x.to - 1e-9) ?? segments[segments.length - 1];
+  return { ...s, from: n * period + s.from, to: n * period + s.to };
+}
+// instance i's first policy check at or after t, skipping the time it is down
+function checkOf(g, C, i, t) {
+  if (!C.schedule) return nextCheck(g, i, t);
+  for (let guard = 0; guard < 64; guard++) {
+    const s = segmentAt(C, t);
+    if (s.down === i) { t = s.to; continue; }
+    const c = nextCheck(g, i, t);
+    if (c < s.to) return c;
+    t = s.to;
+  }
+  return Infinity;
+}
+// the manager's first check at or after t, and who that is
+function managerCheck(g, C, t) {
+  if (!C.schedule) return { at: nextCheck(g, C.manager, t), by: C.manager };
+  for (let guard = 0; guard < 64; guard++) {
+    const s = segmentAt(C, t);
+    if (s.manager >= 0 && s.down !== s.manager) {
+      const c = nextCheck(g, s.manager, Math.max(t, s.from));
+      if (c < s.to) return { at: c, by: s.manager };
+    }
+    t = s.to;
+  }
+  return { at: Infinity, by: C.manager };
+}
+const managerAt = (C, t) => (C.schedule ? segmentAt(C, t) : { manager: C.manager, down: -1 });
+
+// Fig 5's manager scenarios, in partition widths (days), each ending where it began. From
+// operations/cold-storage.md: a handoff is TO REFRESHER on the manager (it flushes and
+// releases _manager.lock), then TO MANAGER on the replacement; uploads and GC pause between.
+// If the manager dies nothing takes over: a restarted instance finds the foreign lock and
+// stays a refresher, so an operator proves the old one dead and uses TO MANAGER FORCE.
+const ROLE = "SWITCH COLD STORAGE ROLE TO ";
+const MANAGER_MODES = {
+  steady: { label: "STEADY", schedule: null, commands: [] },
+  handoff: {
+    label: "HANDOFF",
+    schedule: { name: "handoff", period: 8, segments: [
+      { from: 0, to: 0.3, manager: -1, down: -1 }, { from: 0.3, to: 3.98, manager: 2, down: -1 },
+      { from: 3.98, to: 4.3, manager: -1, down: -1 }, { from: 4.3, to: 7.98, manager: 1, down: -1 },
+      { from: 7.98, to: 8, manager: -1, down: -1 },
+    ] },
+    commands: [[0.3, 2, ROLE + "MANAGER"], [3.98, 2, ROLE + "REFRESHER"], [4.3, 1, ROLE + "MANAGER"], [7.98, 1, ROLE + "REFRESHER"]],
+  },
+  dies: {
+    label: "MANAGER DIES",
+    schedule: { name: "dies", period: 12, segments: [
+      { from: 0, to: 0.3, manager: -1, down: -1 }, { from: 0.3, to: 3.5, manager: 2, down: -1 },
+      { from: 3.5, to: 6, manager: -1, down: 2 }, { from: 6, to: 7.5, manager: 1, down: 2 },
+      { from: 7.5, to: 11.7, manager: 1, down: -1 }, { from: 11.7, to: 12, manager: -1, down: -1 },
+    ] },
+    commands: [[0.3, 2, ROLE + "MANAGER"], [3.5, 2, "CRASH"], [6, 1, ROLE + "MANAGER FORCE"], [7.5, 2, "RESTARTED · foreign lock, stays a refresher"], [11.7, 1, ROLE + "REFRESHER"]],
+  },
+};
+const MANAGER_ORDER = ["steady", "handoff", "dies"];
+const clusterFor = (mode) => (MANAGER_MODES[mode].schedule ? { ...CLUSTER, schedule: MANAGER_MODES[mode].schedule } : CLUSTER);
+
 // the first WAL segment at or after t, and when instance i has applied it
 const segmentAfter = (t) => Math.ceil(t / WAL.period - 1e-9);
 const appliedAt = (n, i) => n * WAL.period + (i === PRIMARY ? 0 : WAL.up + WAL.wait[i] + WAL.down);
 
 // When each thing happens to partition p, as u values. C is the cluster in the figure.
+const memo = new Map();
 function eventsOf(g, p, C = CLUSTER) {
-  const M = C.manager;
+  if (C.schedule) {
+    const key = g + p + C.schedule.name;
+    if (memo.has(key)) return memo.get(key);
+    if (memo.size > 4000) memo.clear();
+    const e = eventsOf0(g, p, C);
+    memo.set(key, e);
+    return e;
+  }
+  return eventsOf0(g, p, C);
+}
+function eventsOf0(g, p, C) {
   const end = p + 1;
-  const up = nextCheck(g, M, end + ttlOf(g, 0, p));
+  const upload = managerCheck(g, C, end + ttlOf(g, 0, p));
+  const up = upload.at, upBy = upload.by;
   const upDone = up + ANIM.lift;
-  const conv = INSTANCES.map((_, i) => nextCheck(g, i, end + ttlOf(g, 1, p)));
+  const conv = INSTANCES.map((_, i) => checkOf(g, C, i, end + ttlOf(g, 1, p)));
   const seal = nextCheck(g, PRIMARY, end + ttlOf(g, 2, p));
   const sealSeg = segmentAfter(seal);
   const sealIn = INSTANCES.map((_, i) => (i === PRIMARY ? seal : appliedAt(sealSeg, i)));
-  const sealed = nextCheck(g, M, Math.max(sealIn[M], upDone));
-  const cold = INSTANCES.map((_, i) => nextCheck(g, i, sealed));
-  return { end, up, upDone, conv, seal, sealSeg, sealIn, sealed, cold };
+  // the manager marks the uploaded partition Sealed once it has the seal and the upload
+  const sealed = managerCheck(g, C, Math.max(C.schedule ? Math.max(...sealIn) : sealIn[C.manager], upDone)).at;
+  const cold = INSTANCES.map((_, i) => checkOf(g, C, i, sealed));
+  // DROP REMOTE: the partition leaves the table at the manager's check, and its objects are
+  // reclaimed once the grace period has passed
+  const gone = POLICY.dropRemote ? managerCheck(g, C, end + ttlOf(g, 3, p)).at : Infinity;
+  const reclaimed = gone + minutesToU(g, GC_GRACE_MINUTES);
+  return { end, up, upBy, upDone, conv, seal, sealSeg, sealIn, sealed, cold, gone, reclaimed };
 }
 
 const unit01 = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x);
@@ -2092,11 +2188,13 @@ const span = (u, from, length) => unit01((u - from) / length);
 
 function laneState(g, p, i, u, C = CLUSTER) {
   const e = eventsOf(g, p, C);
-  return { active: u < e.end, m: span(u, e.conv[i], ANIM.morph), sealed: span(u, e.sealIn[i], ANIM.morph * 0.5), evict: span(u, e.cold[i], ANIM.evict) };
+  return { active: u < e.end, m: span(u, e.conv[i], ANIM.morph), sealed: span(u, e.sealIn[i], ANIM.morph * 0.5), evict: span(u, e.cold[i], ANIM.evict), gone: span(u, e.gone, ANIM.evict) };
 }
+// lift: the upload, 0..1; sealed; deleting: removed from the table, objects in their grace
+// period; gone: 0..1 as the objects are reclaimed
 function storeState(g, p, u, C = CLUSTER) {
   const e = eventsOf(g, p, C);
-  return { lift: u < e.up ? -1 : span(u, e.up, ANIM.lift), sealed: u >= e.sealed };
+  return { lift: u < e.up ? -1 : span(u, e.up, ANIM.lift), sealed: u >= e.sealed, deleting: u >= e.gone && u < e.reclaimed, gone: span(u, e.reclaimed, ANIM.evict) };
 }
 // Did an instance's policy check do work at about time u (for its lamp)?
 function lampOf(g, i, u, partitions, C = CLUSTER) {
@@ -2104,7 +2202,8 @@ function lampOf(g, i, u, partitions, C = CLUSTER) {
   for (const p of partitions) {
     const e = eventsOf(g, p, C);
     const times = [e.conv[i], e.cold[i]];
-    if (i === C.manager) times.push(e.up, e.sealed);
+    if (i === e.upBy) times.push(e.up);
+    if (i === managerAt(C, e.sealed).manager) times.push(e.sealed, e.gone);
     if (i === PRIMARY) times.push(e.seal);
     for (const t of times) if (u >= t && u < t + ANIM.lamp) best = Math.max(best, 1 - (u - t) / ANIM.lamp);
   }
@@ -2154,7 +2253,8 @@ function partitionText(g, p, u, C = CLUSTER) {
   const some = (c) => (n === 1 ? "" : " on " + c + " of " + n);
   const age = u - e.end;
   const st = storeState(g, p, u, C);
-  const next = PRESETS[g].stages.map(([s], k) => ({ s, at: ttlOf(g, k, p) })).filter(({ at }) => age < at).sort((a, b) => a.at - b.at)[0];
+  if (u >= e.gone) return name + " · removed from the table by DROP REMOTE" + (st.deleting ? " · its objects are reclaimed in " + durationOf(g, e.reclaimed - u) : ", objects reclaimed");
+  const next = stagesOf(g).map(([s], k) => ({ s, at: ttlOf(g, k, p) })).filter(({ at }) => age < at).sort((a, b) => a.at - b.at)[0];
   const until = next ? " · " + next.s + " in " + durationOf(g, next.at - age) : "";
   const uploader = n === 1 ? "uploading it as Parquet" : "manager uploading it as Parquet";
   const copy = st.lift >= 1 ? "Parquet partition in the object store" : st.lift >= 0 ? uploader : "not in the object store yet";
@@ -2171,7 +2271,7 @@ function partitionText(g, p, u, C = CLUSTER) {
 // The next policy work anywhere, for the idle readout.
 // Every stage has its own next due time, so all three show, in policy order.
 function nextWorkText(g, u) {
-  return PRESETS[g].stages
+  return stagesOf(g)
     .map(([s], k) => {
       let at = Infinity;
       for (const p of partitionsAt(g, u)) {
@@ -2413,15 +2513,17 @@ function makeParts(k, G, P) {
 
   // The marks on each bench for a preset: a line across, a stop at the back, a stop at the
   // front, and the stage engraved on the front margin, ending at the line.
-  // only: which stages to mark (indices into the policy), so a figure can show just some
-  function marksBack(i, g, only = [0, 1, 2]) {
+  // only: which stages to mark (indices into the policy), so a figure can show just some;
+  // by default every stage the policy has
+  const every = (g) => stagesOf(g).map((_, n) => n);
+  function marksBack(i, g, only = every(g)) {
     const gates = only.map((n) => axisOf(g).gates[n]);
     const y0 = LANE_Y[i] - BENCH.d / 2, y1 = y0 + BENCH.d;
     let out = L(gates.map((x) => k.lineOnTop([x, y0 + 2.2], [x, y1 - 2.2], 0, P)).join(""), { tone: "mid" });
     for (const x of gates) out += slab({ x: x - 1.4, y: y0 + 0.6, w: 2.8, d: 1.8, r: 0.4 }, 0, 2, { tone: "hi", crease: "lo" }, 2, 0.3);
     return out;
   }
-  function marksFront(i, g, only = [0, 1, 2]) {
+  function marksFront(i, g, only = every(g)) {
     const gates = only.map((n) => axisOf(g).gates[n]);
     const y1 = LANE_Y[i] + BENCH.d / 2;
     return gates.map((x) => slab({ x: x - 1.4, y: y1 - 2.4, w: 2.8, d: 1.8, r: 0.4 }, 0, 2, { tone: "hi", crease: "lo" }, 2, 0.3)).join("");
@@ -2429,7 +2531,7 @@ function makeParts(k, G, P) {
 
   // The ruler on the floor in front: a tick per partition boundary, a stop and the stage
   // with its TTL at each mark, and what the partition is between the marks.
-  function rulerSvg(g, only = [0, 1, 2]) {
+  function rulerSvg(g, only = every(g)) {
     const { xOfAge } = axisOf(g);
     const gates = only.map((n) => axisOf(g).gates[n]);
     const out = [];
@@ -2473,14 +2575,28 @@ function makeParts(k, G, P) {
       ["Parquet partition to the object store", "local copy stays native"],
       ["local copy becomes Parquet"],
       ["local keeps metadata only"],
+      ["leaves the table", "objects reclaimed after 30 min"],
     ];
     // Laid out from the heads leftwards: each label keeps clear of the heads and of the
     // label before it, sliding left along the ruler; a slid label gets a leader to its mark.
     const GAP = 56;
     let limit = X_NOW - GAP;
+    let under = 0; // where DROP LOCAL's words went
     const leaders = [], pins = [];
-    PRESETS[g].stages.forEach(([s, , short], n) => {
+    stagesOf(g).forEach(([s, , short], n) => {
+      // DROP REMOTE sits close to DROP LOCAL on the log axis: its words stack under DROP
+      // LOCAL's, with a leader back to its own mark, rather than sliding off the left edge
+      if (n === 3) {
+        const x = under;
+        leaders.push(k.lineOnTop([gates[n], R.y + R.d - 1.2], [x, R.y + R.d - 1.2], z + 0.8, P));
+        pins.push(at([gates[n], R.y + R.d - 1.2, z + 0.8]));
+        const pt = [x, R.y + R.d, z];
+        out.push(label(pt, s + " " + short, { dy: 47 }));
+        what[n].forEach((line, j) => out.push(label(pt, line, { dy: 58 + j * 10, sub: true })));
+        return;
+      }
       const x = Math.min(gates[n], limit);
+      if (n === 2) under = x;
       limit = x - GAP;
       if (gates[n] - x > 2) {
         leaders.push(k.lineOnTop([gates[n], R.y + R.d - 1.2], [x, R.y + R.d - 1.2], z + 0.8, P));
@@ -2593,16 +2709,24 @@ function makeScene(k, P, parts) {
       const left = x0 + gap, len = x1 - x0 - (open ? gap : 2 * gap);
       if (len < 0.4) continue;
       const cold = [];
+      const st = storeState(g, p, u, C);
+      // DROP REMOTE: gone from every bench at once; its Parquet partition dims through the
+      // grace period, then fades as the objects are reclaimed
+      if (st.gone >= 1) continue;
       for (const i of C.lanes) {
         const s = laneState(g, p, i, u, C);
+        if (s.gone > 0) continue;
         const key = [q(len), open ? 1 : 0, q(s.m), q(s.sealed), q(s.evict), lit ? 1 : 0].join();
         lanes[i].push({ id: "p" + p, p, x: left, y: LANE_Y[i], len: q(len), open, key, html: () => parts.blockSvg(q(len), { m: s.m, sealed: s.sealed, evict: s.evict, lit, open }) });
         if (s.evict >= 0.7) cold.push(i);
       }
-      const st = storeState(g, p, u, C);
-      if (st.lift >= 1) store.push({ id: "c" + p, p, x: left, y: STORE_Y, len: q(len), key: [q(len), lit ? 1 : 0].join(), html: () => parts.copySvg(q(len), DECK_TOP, lit) });
+      if (st.lift >= 1) {
+        const dim = st.deleting || st.gone > 0;
+        const fade = st.gone > 0 ? 1 - st.gone : dim ? 0.45 : 1;
+        store.push({ id: "c" + p, p, x: left, y: STORE_Y, len: q(len), opacity: fade, key: [q(len), lit ? 1 : 0].join(), html: () => parts.copySvg(q(len), DECK_TOP, lit) });
+      }
       else if (st.lift >= 0) {
-        const [, y, z] = parts.flight([left, LANE_Y[C.manager], 1.2], [left, STORE_Y, DECK_TOP], st.lift);
+        const [, y, z] = parts.flight([left, LANE_Y[eventsOf(g, p, C).upBy], 1.2], [left, STORE_Y, DECK_TOP], st.lift);
         copy += `<g data-p="${p}" transform="${k.translateAlong(P, [left, y, 0])}">${parts.copySvg(len, z, lit, false)}</g>`;
       }
       if (cold.length === n && st.lift >= 1) example = p;
@@ -2632,6 +2756,7 @@ function makeScene(k, P, parts) {
         const j = (u - t - WAL.up) / WAL.period;
         if (j < WAL.keep) bay.push({ j, html: parts.chipSvg(parts.baySlot(j), lit) });
         for (const i of replicas) {
+          if (managerAt(C, u).down === i) continue; // an instance that is down fetches nothing
           const s = (u - t - WAL.up - WAL.wait[i]) / WAL.down;
           if (s >= 0 && s < 1) flying.push(parts.chipSvg(parts.flight(parts.baySlot(WAL.wait[i] / WAL.period), parts.PORT(i), s), lit));
         }
@@ -2646,7 +2771,7 @@ function makeScene(k, P, parts) {
 }
 
 // Serialise keyed items for the static build.
-const itemsSvg = (k, P, items) => items.map((it) => `<g data-id="${it.id}" data-p="${it.p}" transform="${k.translateAlong(P, [it.x, it.y, 0])}">${it.html()}</g>`).join("");
+const itemsSvg = (k, P, items) => items.map((it) => `<g data-id="${it.id}" data-p="${it.p}"${(it.opacity ?? 1) < 0.999 ? ` opacity="${it.opacity.toFixed(2)}"` : ""} transform="${k.translateAlong(P, [it.x, it.y, 0])}">${it.html()}</g>`).join("");
 
 // The model behind Fig 2: one SELECT on the trades table from Fig 1, while the cluster
 // keeps running (PARTITION BY DAY, TO REMOTE 1 HOUR, TO PARQUET 3 DAYS, DROP LOCAL 1 MONTH).
