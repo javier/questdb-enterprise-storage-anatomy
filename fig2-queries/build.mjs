@@ -1,9 +1,9 @@
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import * as k from "/Users/j/.claude/skills/anatomy/kit/iso-kit.mjs";
-import * as G from "/Users/j/.claude/skills/anatomy/kit/lathe.mjs";
-import { kitScript } from "/Users/j/.claude/skills/anatomy/scripts/inline-kit.mjs";
+import * as k from "../kit/iso-kit.mjs";
+import * as G from "../kit/lathe.mjs";
+import { kitScript } from "../kit/inline-kit.mjs";
 import { PQ_CSS, makeParts } from "../fig1-partitions/parts.mjs";
 import { itemsSvg, makeScene, ticksOf } from "../fig1-partitions/scene.mjs";
 import { AZIMUTH, DARK, makeStage, projectionOf } from "../fig1-partitions/stage.mjs";
@@ -13,7 +13,7 @@ import { makeFigure } from "./figure.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIG1 = join(HERE, "..", "fig1-partitions");
-const KIT_DIR = "/Users/j/.claude/skills/anatomy/kit";
+const KIT_DIR = fileURLToPath(new URL("../kit", import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
 const strip = (text) => text.replace(/^import .*$/gm, "").replace(/^export \{.*$/gm, "").replace(/^export /gm, "");
 

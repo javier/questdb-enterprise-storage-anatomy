@@ -1,32 +1,32 @@
-// Builds Fig 8 (a new replica from a backup) or Fig 9 (point-in-time recovery), which share
+// Builds Fig 9 (a new replica from a backup) or Fig 10 (point-in-time recovery), which share
 // this folder's model, drawing and live code:
-//   node recover/build.mjs --fig replica [--light]   writes fig8-replica/
-//   node recover/build.mjs --fig pitr [--light]      writes fig9-pitr/
+//   node recover/build.mjs --fig replica [--light]   writes fig9-replica/
+//   node recover/build.mjs --fig pitr [--light]      writes fig10-pitr/
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import * as k from "/Users/j/.claude/skills/anatomy/kit/iso-kit.mjs";
-import * as G from "/Users/j/.claude/skills/anatomy/kit/lathe.mjs";
-import { kitScript } from "/Users/j/.claude/skills/anatomy/scripts/inline-kit.mjs";
+import * as k from "../kit/iso-kit.mjs";
+import * as G from "../kit/lathe.mjs";
+import { kitScript } from "../kit/inline-kit.mjs";
 import { nameOf } from "../fig1-partitions/model.mjs";
 import { FLOOR, FLY_Z, HEAD, LANE_Y, PQ_CSS, RULER, X_NOW, makeParts } from "../fig1-partitions/parts.mjs";
 import { itemsSvg, makeScene } from "../fig1-partitions/scene.mjs";
 import { AZIMUTH, DARK, benchPlan, makeStage } from "../fig1-partitions/stage.mjs";
-import { GRAIN } from "../fig7-backups/backup.mjs";
-import { C6, STAND, STORE6, makeBackups } from "../fig7-backups/draw.mjs";
+import { GRAIN } from "../fig8-backups/backup.mjs";
+import { C6, STAND, STORE6, makeBackups } from "../fig8-backups/draw.mjs";
 import { FIGURES, MODES, SOURCE_U, targetRange } from "./restore.mjs";
 import { NEW, NEWSTORE, makeRestore, storyOf7 } from "./draw.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
 const FIG1 = join(ROOT, "fig1-partitions");
-const FIG6 = join(ROOT, "fig7-backups");
-const KIT_DIR = "/Users/j/.claude/skills/anatomy/kit";
+const FIG6 = join(ROOT, "fig8-backups");
+const KIT_DIR = fileURLToPath(new URL("../kit", import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
 const fig = process.argv[process.argv.indexOf("--fig") + 1];
 if (!FIGURES[fig]) throw new Error("--fig replica | pitr");
 const pitr = fig === "pitr";
-const OUT = join(ROOT, pitr ? "fig9-pitr" : "fig8-replica");
+const OUT = join(ROOT, pitr ? "fig10-pitr" : "fig9-replica");
 const NAME = pitr ? "pitr" : "replica";
 const CLASS = pitr ? "sa-f8" : "sa-f7";
 const strip = (text) => text.replace(/^import .*$/gm, "").replace(/^export \{.*$/gm, "").replace(/^export /gm, "");
@@ -99,18 +99,18 @@ const BODY = [
 
 const TEXT = pitr
   ? {
-      fig: "Fig 9",
+      fig: "Fig 10",
       title: "Point-in-time recovery",
-      label: "Fig 7's cluster, a primary and a replica, keeps running at the back. In front of a line on the floor, a new, empty instance recovers to a chosen moment: it restores the newest kept backup before it, eight partitions at a time from the backup steps, then replays WAL from the source's tape up to the target, so its data stops at the target post. With a fresh DataID it leaves for good: as the primary of a new cluster on its own, empty object store, or standalone. Partitions past DROP LOCAL read from a copy of the cold storage prefix.",
+      label: "Fig 8's cluster, a primary and a replica, keeps running at the back. In front of a line on the floor, a new, empty instance recovers to a chosen moment: it restores the newest kept backup before it, eight partitions at a time from the backup steps, then replays WAL from the source's tape up to the target, so its data stops at the target post. With a fresh DataID it leaves for good: as the primary of a new cluster on its own, empty object store, or standalone. Partitions past DROP LOCAL read from a copy of the cold storage prefix.",
       lead: "Recovering to a moment, without touching the cluster. A new instance restores a kept backup, replays WAL up to the target, and leaves with a fresh DataID: as the primary of a new cluster, or standalone.",
       hint: "Pick a mode and a target · space pauses",
       caption:
         "Point-in-time recovery builds a new instance in two boots and leaves the source cluster exactly as it was. The first boot, with an empty db/ and no replication configured, runs _backup_restore: the newest kept backup at or before the target, every partition its manifest names fetched from whichever backup prefix holds it, eight streams at a time by default. A partition past DROP LOCAL comes back as its _pm and index only. The second boot runs _recover_point_in_time with the source's replication.object.store and replication.recovery.timestamp: it replays WAL up to the last commit at or before the target, then takes a fresh DataID. From then on it has nothing to do with the source. As the primary of a new cluster it needs a brand new, empty object store of its own, since one that already holds replication data is refused; standalone, it replicates nothing. Either way, if the table uses cold storage, point cold.storage.object.store at a copy of the cold storage prefix, with the role left at refresher, never at the live prefix the source cluster still manages. The target can reach back only to the oldest kept backup, where the WAL cleaner has trimmed the tape; aim earlier and recovery reports success with data missing.",
     }
   : {
-      fig: "Fig 8",
+      fig: "Fig 9",
       title: "Replica from backup",
-      label: "Fig 7's cluster, a primary and a first replica, keeps running. A second replica joins on the front bench: it restores a kept backup, eight partitions at a time from the backup steps, then replays WAL from the store's tape up to now and keeps following the primary like the first replica. Starting from the oldest kept backup takes the same restore but a longer replay.",
+      label: "Fig 8's cluster, a primary and a first replica, keeps running. A second replica joins on the front bench: it restores a kept backup, eight partitions at a time from the backup steps, then replays WAL from the store's tape up to now and keeps following the primary like the first replica. Starting from the oldest kept backup takes the same restore but a longer replay.",
       lead: "Adding a replica without copying everything from the primary. A new instance restores a kept backup, replays the WAL since, and joins the cluster as replica 2.",
       hint: "Pick the backup to start from · space pauses",
       caption:
@@ -210,13 +210,13 @@ const live = [
 const file = theme === "light" ? `${NAME}-light.html` : `${NAME}.html`;
 writeFileSync(join(OUT, file), k.pageHtml({ title: TEXT.title, theme, body, script: kitScript() + latheScript() + live, width: 780 }));
 writeFileSync(join(OUT, `fragment-${theme}.json`), JSON.stringify({ html: body, script: live, lead: TEXT.lead }));
-console.log("wrote", join(pitr ? "fig9-pitr" : "fig8-replica", file));
+console.log("wrote", join(pitr ? "fig10-pitr" : "fig9-replica", file));
 
 const REACT = join(OUT, "react", pitr ? "PointInTimeRecovery" : "ReplicaFromBackup");
 for (const dir of ["kit", "fig1", "fig6", "recover"]) mkdirSync(join(REACT, dir), { recursive: true });
 for (const name of ["iso-kit.mjs", "lathe.mjs", "iso.css"]) copyFileSync(join(KIT_DIR, name), join(REACT, "kit", name));
 for (const name of ["model.mjs", "parts.mjs", "scene.mjs"]) copyFileSync(join(FIG1, name), join(REACT, "fig1", name));
-const up = (text) => text.replaceAll("../fig1-partitions/", "../fig1/").replaceAll("../fig7-backups/", "../fig6/");
+const up = (text) => text.replaceAll("../fig1-partitions/", "../fig1/").replaceAll("../fig8-backups/", "../fig6/");
 for (const name of ["backup.mjs", "draw.mjs"]) writeFileSync(join(REACT, "fig6", name), up(readFileSync(join(FIG6, name), "utf8")));
 for (const name of ["restore.mjs", "draw.mjs", "live.mjs"]) writeFileSync(join(REACT, "recover", name), up(readFileSync(join(HERE, name), "utf8")));
 writeFileSync(join(REACT, "plate.generated.mjs"), `// Generated by recover/build.mjs. Do not edit.\nexport const PLATE_HTML = ${JSON.stringify(body)};\nexport const DATA = ${JSON.stringify(DATA)};\n`);

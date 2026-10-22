@@ -1,16 +1,16 @@
-// The model behind Figs 7 and 8: building a new instance from Fig 7's backups and WAL.
+// The model behind Figs 7 and 8: building a new instance from Fig 8's backups and WAL.
 // Pure: every answer is a function of the mode, the target and the seconds since the run
 // began. The source cluster, a primary and a first replica, runs on untouched throughout.
 //
 // From the code and the docs (operations/backup.md, operations/point-in-time-recovery.md):
-//   A NEW REPLICA FROM A BACKUP (Fig 8) is one boot: _backup_restore with
+//   A NEW REPLICA FROM A BACKUP (Fig 9) is one boot: _backup_restore with
 //     replication.role=replica and the cluster's replication.object.store. It restores a kept
 //     backup, every partition its manifest names fetched from whichever backup prefix holds
 //     it, up to 8 at a time (backup.max.concurrent.network.requests); a cold partition comes
 //     back as _pm and index only, reading from the cluster's cold prefix as a refresher. It
 //     then replays WAL from the store to the latest and keeps following the primary: same
 //     DataID, same stores. A base older than the WAL kept in the store fails with ER003.
-//   POINT-IN-TIME RECOVERY (Fig 9) takes two boots of a new instance with an empty db/:
+//   POINT-IN-TIME RECOVERY (Fig 10) takes two boots of a new instance with an empty db/:
 //     boot 1  _backup_restore with no replication configured: the newest kept backup at or
 //             before the target.
 //     boot 2  _recover_point_in_time with the source's replication.object.store and
@@ -21,7 +21,7 @@
 //             read from a copy of the cold prefix, never the live one.
 
 import { partitionsAt } from "../fig1-partitions/model.mjs";
-import { GRAIN, frameOf, holderOf, stateOf } from "../fig7-backups/backup.mjs";
+import { GRAIN, frameOf, holderOf, stateOf } from "../fig8-backups/backup.mjs";
 
 export const SOURCE_U = 60.9; // the source cluster, held at one moment, retention at rest
 export const KEEP = 5;

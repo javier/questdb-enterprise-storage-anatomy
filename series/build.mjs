@@ -6,12 +6,12 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import * as k from "/Users/j/.claude/skills/anatomy/kit/iso-kit.mjs";
-import { kitScript } from "/Users/j/.claude/skills/anatomy/scripts/inline-kit.mjs";
+import * as k from "../kit/iso-kit.mjs";
+import { kitScript } from "../kit/inline-kit.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
-const KIT_DIR = "/Users/j/.claude/skills/anatomy/kit";
+const KIT_DIR = fileURLToPath(new URL("../kit", import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
 const strip = (text) => text.replace(/^import .*$/gm, "").replace(/^export \{.*$/gm, "").replace(/^export /gm, "");
 const latheScript = `const G = (() => {\n${strip(readFileSync(join(KIT_DIR, "lathe.mjs"), "utf8"))}\nreturn { frameAlong, disc };\n})();\n`;
@@ -23,9 +23,10 @@ const FIGURES = [
   { dir: "fig4-replication", lead: "Two replicas join. Replication runs through the same object store: the primary uploads WAL segments, and each replica polls, downloads and applies them at its own pace." },
   { dir: "fig5-cluster-policy", lead: "The storage policy across the cluster: each instance converts its own copy, one instance uploads for everyone, and the DROP LOCAL seal travels through the WAL." },
   { dir: "fig6-failover", lead: "Changing the primary, planned or not. In a switchover the operator demotes the primary, promotes a replica, does the maintenance and switches back. In a failure the primary dies, a replica is promoted, and the client replays what was never acknowledged." },
-  { dir: "fig7-backups", lead: "Backups are incremental by partition: each night uploads only what changed and points at older backups for the rest. Keeping the latest five also sets how much WAL the object store keeps, and so how far back point-in-time recovery reaches." },
-  { dir: "fig8-replica", lead: "Adding a replica without copying everything from the primary. A new instance restores a kept backup, replays the WAL since, and joins the cluster as replica 2." },
-  { dir: "fig9-pitr", lead: "Recovering to a moment, without touching the cluster. A new instance restores a kept backup, replays WAL up to the target, and leaves with a fresh DataID: as the primary of a new cluster, or standalone." },
+  { dir: "fig7-outage", lead: "When the object store is unreachable, nothing stops: each part retries on its own and nothing local depends on the store. What piles up, what waits, what fails, and how it all catches up." },
+  { dir: "fig8-backups", lead: "Backups are incremental by partition: each night uploads only what changed and points at older backups for the rest. Keeping the latest five also sets how much WAL the object store keeps, and so how far back point-in-time recovery reaches." },
+  { dir: "fig9-replica", lead: "Adding a replica without copying everything from the primary. A new instance restores a kept backup, replays the WAL since, and joins the cluster as replica 2." },
+  { dir: "fig10-pitr", lead: "Recovering to a moment, without touching the cluster. A new instance restores a kept backup, replays WAL up to the target, and leaves with a fresh DataID: as the primary of a new cluster, or standalone." },
 ];
 
 const parts = FIGURES.map(({ dir, lead }) => {
@@ -36,12 +37,43 @@ const parts = FIGURES.map(({ dir, lead }) => {
 const intro =
   `<style>.sa-series h1{font-size:22px;line-height:1.3;color:var(--anatomy-strong);margin:0 0 8px;font-weight:600}` +
   `.sa-series .sa-sub{margin:0 0 40px;color:var(--anatomy-text)}` +
-  `.sa-lead{margin:64px 0 16px;color:var(--anatomy-text)}.sa-lead:first-of-type{margin-top:0}</style>` +
+  `.sa-lead{margin:64px 0 16px;color:var(--anatomy-text)}.sa-lead:first-of-type{margin-top:0}` +
+  // the pause button every figure gets, under its number
+  `.iso-plate>.sa-pause{position:absolute;top:40px;left:20px;z-index:2;font:10.5px/1 var(--anatomy-mono);letter-spacing:.06em;color:var(--anatomy-text);background:var(--anatomy-card);border:0;box-shadow:0 0 0 1px var(--anatomy-lo);padding:5px 8px;cursor:pointer;border-radius:0}` +
+  `.iso-plate>.sa-pause[aria-pressed="true"]{color:var(--anatomy-strong);box-shadow:0 0 0 1px var(--anatomy-strong)}.iso-plate>.sa-pause:focus-visible{outline:1px solid var(--anatomy-strong);outline-offset:2px}` +
+  `@media (prefers-reduced-motion: reduce){.iso-plate>.sa-pause{display:none}}</style>` +
   `<header class="sa-series"><h1>Storage in QuestDB Enterprise</h1>` +
   `<p class="sa-sub">One table on a three-instance cluster, from the first row to the object store.</p></header>`;
 
 const body = intro + parts.map((p) => p.html).join("");
-const script = kitScript() + latheScript + parts.map((p) => p.script).join("\n");
+// A PAUSE / RESUME button on every figure. It presses the figure's own Space key, so each
+// figure keeps its pause logic; it follows a Space pressed on the figure too, and after a
+// click on the figure's other controls it re-reads the readout, since some of them resume.
+const pauseScript = `
+for (const plate of document.querySelectorAll(".iso-plate")) {
+  const stage = plate.querySelector(".iso-stage");
+  if (!stage) continue;
+  const readout = plate.querySelector("[data-readout]");
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "sa-pause";
+  let paused = false;
+  const show = () => { b.textContent = paused ? "RESUME" : "PAUSE"; b.setAttribute("aria-pressed", String(paused)); };
+  b.addEventListener("click", () => {
+    stage.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
+    paused = !paused;
+    show();
+  });
+  stage.addEventListener("keydown", (e) => { if (e.key === " " && e.isTrusted) { paused = !paused; show(); } });
+  plate.addEventListener("click", (e) => {
+    if (e.target === b || !e.target.closest?.("button")) return;
+    setTimeout(() => { paused = /\\bpaused\\b/.test(readout?.textContent ?? ""); show(); }, 60);
+  });
+  show();
+  plate.appendChild(b);
+}
+`;
+const script = kitScript() + latheScript + parts.map((p) => p.script).join("\n") + pauseScript;
 const file = theme === "light" ? "index-light.html" : "index.html";
 writeFileSync(join(HERE, file), k.pageHtml({ title: "Storage in QuestDB Enterprise", theme, body, script, width: 780 }));
 console.log("wrote series/" + file);
