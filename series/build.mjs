@@ -23,6 +23,8 @@ const FIGURES = [
   { dir: "fig4-cluster-policy", lead: "The storage policy across the cluster: each instance converts its own copy, one instance uploads for everyone, and the DROP LOCAL seal travels through the WAL." },
   { dir: "fig5-failover", lead: "Changing the primary, planned or not. In a switchover the operator demotes the primary, promotes a replica, does the maintenance and switches back. In a failure the primary dies, a replica is promoted, and the client replays what was never acknowledged." },
   { dir: "fig6-backups", lead: "Backups are incremental by partition: each night uploads only what changed and points at older backups for the rest. Keeping the latest five also sets how much WAL the object store keeps, and so how far back point-in-time recovery reaches." },
+  { dir: "fig7-replica", lead: "Adding a replica without copying everything from the primary. A new instance restores a kept backup, replays the WAL since, and joins the cluster as replica 2." },
+  { dir: "fig8-pitr", lead: "Recovering to a moment, without touching the cluster. A new instance restores a kept backup, replays WAL up to the target, and leaves with a fresh DataID: as the primary of a new cluster, or standalone." },
 ];
 
 const parts = FIGURES.map(({ dir, lead }) => {

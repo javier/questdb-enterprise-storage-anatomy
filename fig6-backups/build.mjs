@@ -120,7 +120,7 @@ const KEYS = [
   ["A native partition in a backup: its column files, packed", tileBox, tile("native")],
   ["A Parquet partition in a backup: data.parquet and its _pm", tileBox, tile("parquet")],
   ["A cold partition in a backup: only _pm and the index; the outlined data stays in cold storage", tileBox, tile("cold")],
-  ["A backup's tray: its manifest names every partition; the tiles on it are the ones it uploaded", tileBox, (SP) => makeBackups(k, SP, makeParts(k, G, SP)).traySvg(false)],
+  ["A backup's tray: its manifest names every partition; the tiles on it are the ones it uploaded", tileBox, (SP) => makeBackups(k, SP, makeParts(k, G, SP)).traySvg(false, { x0: 0, x1: 16 })],
 ];
 const keysHtml = `<span class="iso-keys sa-keys">${KEYS.map(([label, box, draw]) => `<span class="iso-key sa-key">${swatch(label, box, draw)}<span>${label}</span></span>`).join("")}</span>`;
 
