@@ -19,7 +19,7 @@ import { ROW_GROUPS } from "../fig1-partitions/parts.mjs";
 
 export const GRAIN = "DAY";
 export const SERVER = 0; // the primary runs the query
-export const C = SINGLE; // one instance; replicas arrive in Fig 3
+export const C = SINGLE; // one instance; replicas arrive in Fig 4
 
 // Projected columns, in file order, and the column-file bars each one maps to.
 export const COLUMNS = [
@@ -113,7 +113,7 @@ export function planText(plan) {
   const out = [];
   if (plan.native.parts) out.push(`native: ${many(plan.native.parts, "partition")}, ${many(plan.native.files, "column file")}`);
   if (plan.parquet.parts) out.push(`local Parquet: ${many(plan.parquet.parts, "partition")}, ${many(plan.parquet.chunks, "chunk")}`);
-  if (plan.cold.parts) out.push(`cold: ${many(plan.cold.parts, "partition")}, ${many(plan.cold.chunks, "chunk")} in ${many(plan.cold.requests, "range read")}`);
+  if (plan.cold.parts) out.push(`from cold storage: ${many(plan.cold.parts, "partition")}, ${many(plan.cold.chunks, "chunk")} in ${many(plan.cold.requests, "range read")}`);
   return out.join(" · ") || "no partitions in range";
 }
 
@@ -125,6 +125,6 @@ export function readText(p, range, cols, u) {
   if (tier === "native") return `${name} · native on local disk · reads ${many(filesOf(cols), "column file")}`;
   const groups = groupsOf(span);
   const chunks = `${groups} of ${ROW_GROUPS} row groups × ${many(cols.length, "column")} = ${many(groups * cols.length, "chunk")}`;
-  if (tier === "parquet") return `${name} · Parquet on local disk${hasRemoteCopy(p, u) ? ", its object store copy not used" : ""} · ${chunks}`;
-  return `${name} · cold · ${chunks}, fetched in ${many(groups * columnRuns(cols), "range read")}`;
+  if (tier === "parquet") return `${name} · Parquet on local disk${hasRemoteCopy(p, u) ? ", its copy in cold storage not used" : ""} · ${chunks}`;
+  return `${name} · local data dropped, read from cold storage · ${chunks}, fetched in ${many(groups * columnRuns(cols), "range read")}`;
 }
