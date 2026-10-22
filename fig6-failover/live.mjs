@@ -60,7 +60,7 @@ export function mount(stage, data, k, G) {
     for (const b of controls?.querySelectorAll("[data-mode]") ?? []) b.setAttribute("aria-checked", String(b.dataset.mode === mode));
   }
   function tick(now) {
-    const dt = last ? Math.min((now - last) / 1000, 1 / 20) : 1 / 60;
+    const dt = (last ? Math.min((now - last) / 1000, 1 / 20) : 1 / 60) * (Number(stage.dataset.speed) || 1);
     last = now;
     if (!paused) {
       t += dt;

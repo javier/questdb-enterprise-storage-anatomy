@@ -27,7 +27,7 @@ Every figure is a small working machine rather than a diagram. Each one runs fro
 
 The folder names keep the order the figures were first made in; the table gives their numbers today.
 
-All of them, in order, are on one page: `series/index.html` (dark) and `series/index-light.html` (light). On that page every figure has a PAUSE / RESUME button under its number, to hold it at any moment, and RESTART beside it to run it again from the start; Space on a focused figure pauses too.
+All of them, in order, are on one page: `series/index.html` (dark) and `series/index-light.html` (light). On that page every figure has a PAUSE / RESUME button just above its card, to hold it at any moment, and RESTART beside it to run it again from the start. SPEED steps every figure through full, half and quarter speed at once, and the page remembers the choice. Space on a focused figure pauses too.
 
 Every figure comes in both themes. Fig 2 at the same moment in each:
 
