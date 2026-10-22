@@ -93,10 +93,11 @@ export function makeBackups(k, P, parts) {
     return out.join("");
   }
   // A tray for one backup: a flat strip under the bench's whole axis, with a tab at the end.
-  function traySvg(lit) {
+  // x0, x1: its span, the whole axis unless the legend asks for a short one
+  function traySvg(lit, { x0 = X_END - 6, x1 = X_NOW + 8 } = {}) {
     const tone = { tone: lit ? "mid" : "lo", crease: "none", lit };
-    return slab({ x: X_END - 6, y: -TILE_HALF - 0.6, w: X_NOW - X_END + 14, d: 2 * TILE_HALF + 1.2, r: 0.8 }, 0, TRAY_H, tone, 2, 0.2) +
-      slab({ x: X_NOW + 3, y: -TILE_HALF + 0.4, w: 4, d: 2 * TILE_HALF - 0.8, r: 0.5 }, TRAY_H, 1.6, { tone: "mid", crease: "lo", lit });
+    return slab({ x: x0, y: -TILE_HALF - 0.6, w: x1 - x0, d: 2 * TILE_HALF + 1.2, r: 0.8 }, 0, TRAY_H, tone, 2, 0.2) +
+      slab({ x: x1 - 5, y: -TILE_HALF + 0.4, w: 4, d: 2 * TILE_HALF - 0.8, r: 0.5 }, TRAY_H, 1.6, { tone: "mid", crease: "lo", lit });
   }
 
   const q = (x) => Math.round(x * 5) / 5;
@@ -176,9 +177,15 @@ export function makeBackups(k, P, parts) {
     const xb = xOfAge(u - F.boundary);
     const tape = (xa, xc, lit) => slab({ x: xa, y: WAL_Y - 2.2, w: Math.max(0.3, xc - xa), d: 4.4, r: 0.4 }, z, 1.2, { tone: "hi", crease: "lo", lit }, 2, 0.2);
     let wal = slab({ x: X_END - 6, y: WAL_Y - 3, w: X_NOW - X_END + 9, d: 6, r: 0.8 }, z, 0.4, { tone: "lo", crease: "none" });
-    const litFrom = hj >= 0 ? xOfAge(u - list[hj]) : null;
-    if (litFrom !== null && litFrom > xb) wal += tape(xb, litFrom, false) + tape(litFrom, X_NOW, true);
-    else wal += tape(xb, X_NOW, litFrom !== null);
+    // a hovered backup lights the WAL that rolls it forward: to now, or to hovered.to
+    const litFrom = hj >= 0 ? Math.max(xb, xOfAge(u - list[hj])) : null;
+    const litTo = hj >= 0 && hovered.to !== undefined ? Math.max(litFrom, xOfAge(u - hovered.to)) : X_NOW;
+    if (litFrom === null) wal += tape(xb, X_NOW, false);
+    else {
+      if (litFrom > xb + 0.3) wal += tape(xb, litFrom, false);
+      wal += tape(litFrom, litTo, true);
+      if (litTo < X_NOW - 0.3) wal += tape(litTo, X_NOW, false);
+    }
     if (F.prune) {
       const xa = xOfAge(u - F.prune.from), xc = xOfAge(u - F.prune.to);
       wal += `<g opacity="${(1 - ease(F.prune.f)).toFixed(2)}">${tape(xa, xc, false)}</g>`;
