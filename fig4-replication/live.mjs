@@ -68,7 +68,7 @@ export function mount(stage, data, k, G) {
     choose(load === "light" ? "heavy" : "light");
   }
   function tick(now) {
-    const dt = last ? Math.min((now - last) / 1000, 1 / 20) : 1 / 60;
+    const dt = (last ? Math.min((now - last) / 1000, 1 / 20) : 1 / 60) * (Number(stage.dataset.speed) || 1);
     last = now;
     // rows ride the feed faster under heavy load
     if (!paused) { sim.step(dt * SPEED); feedPhase += dt * (load === "heavy" ? 2.2 : 0.5); tour(dt); }

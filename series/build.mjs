@@ -40,20 +40,32 @@ const intro =
   `<style>.sa-series h1{font-size:22px;line-height:1.3;color:var(--anatomy-strong);margin:0 0 8px;font-weight:600}` +
   `.sa-series .sa-sub{margin:0 0 40px;color:var(--anatomy-text)}` +
   `.sa-lead{margin:64px 0 16px;color:var(--anatomy-text)}.sa-lead:first-of-type{margin-top:0}` +
-  // the pause and restart buttons every figure gets, under its number
-  `.iso-plate>.sa-ctl{position:absolute;top:40px;left:20px;z-index:2;display:flex;gap:6px}` +
+  // the pause, restart and speed buttons every figure gets, in a row just above its card
+  `.sa-ctl{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:6px;margin:0 0 8px}` +
   `.sa-ctl>button{font:10.5px/1 var(--anatomy-mono);letter-spacing:.06em;color:var(--anatomy-text);background:var(--anatomy-card);border:0;box-shadow:0 0 0 1px var(--anatomy-lo);padding:5px 8px;cursor:pointer;border-radius:0}` +
   `.sa-ctl>button[aria-pressed="true"]{color:var(--anatomy-strong);box-shadow:0 0 0 1px var(--anatomy-strong)}.sa-ctl>button:focus-visible{outline:1px solid var(--anatomy-strong);outline-offset:2px}` +
-  `@media (prefers-reduced-motion: reduce){.iso-plate>.sa-ctl{display:none}}</style>` +
+  `@media (prefers-reduced-motion: reduce){.sa-ctl{display:none}}</style>` +
   `<header class="sa-series"><h1>Storage in QuestDB Enterprise</h1>` +
   `<p class="sa-sub">From the first row on one instance's disk to a three-instance cluster on an object store.</p></header>`;
 
 const body = intro + parts.map((p) => p.html).join("");
-// A PAUSE / RESUME button on every figure. It presses the figure's own Space key, so each
+// A PAUSE / RESUME button above every figure. It presses the figure's own Space key, so each
 // figure keeps its pause logic; it follows a Space pressed on the figure too, and after a
 // click on the figure's other controls it re-reads the readout, since some of them resume.
 // RESTART beside it runs the figure again from its first moment, through its restart().
+// SPEED steps every figure through full, half and quarter speed at once: each figure scales
+// its clock by its stage's data-speed. The choice is kept for the next visit when it can be.
 const pauseScript = `
+const SA_SPEEDS = [[1, "1×"], [0.5, "½×"], [0.25, "¼×"]];
+let saSpeed = 0;
+try { saSpeed = Math.max(0, SA_SPEEDS.findIndex(([v]) => String(v) === localStorage.getItem("sa-speed"))); } catch {}
+const saSpeedButtons = [];
+const saSetSpeed = (i) => {
+  saSpeed = i;
+  for (const st of document.querySelectorAll(".iso-plate .iso-stage")) st.dataset.speed = String(SA_SPEEDS[i][0]);
+  for (const x of saSpeedButtons) { x.textContent = "SPEED " + SA_SPEEDS[i][1]; x.setAttribute("aria-pressed", String(i > 0)); }
+  try { localStorage.setItem("sa-speed", String(SA_SPEEDS[i][0])); } catch {}
+};
 for (const plate of document.querySelectorAll(".iso-plate")) {
   const stage = plate.querySelector(".iso-stage");
   if (!stage) continue;
@@ -77,13 +89,20 @@ for (const plate of document.querySelectorAll(".iso-plate")) {
   });
   stage.addEventListener("keydown", (e) => { if (e.key === " " && e.isTrusted) { paused = !paused; show(); } });
   plate.addEventListener("click", (e) => {
-    if (e.target === b || e.target === again || !e.target.closest?.("button")) return;
+    if (e.target === b || e.target === again || e.target === slow || !e.target.closest?.("button")) return;
     setTimeout(() => { paused = /\\bpaused\\b/.test(readout?.textContent ?? ""); show(); }, 60);
   });
+  const slow = document.createElement("button");
+  slow.type = "button";
+  slow.className = "sa-speed";
+  slow.title = "Full, half or quarter speed, for every figure";
+  slow.addEventListener("click", () => saSetSpeed((saSpeed + 1) % SA_SPEEDS.length));
+  saSpeedButtons.push(slow);
   show();
-  bar.append(b, again);
-  plate.appendChild(bar);
+  bar.append(b, again, slow);
+  plate.before(bar);
 }
+saSetSpeed(saSpeed);
 `;
 const script = kitScript() + latheScript + parts.map((p) => p.script).join("\n") + pauseScript;
 const file = theme === "light" ? "index-light.html" : "index.html";
