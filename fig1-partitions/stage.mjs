@@ -56,7 +56,8 @@ export function makeStage(k, G, P, parts) {
   // The object store: one deck behind every instance. Parquet partitions on the left, the
   // replication bay for WAL segments on the right, behind the heads.
   // bay: draw the replication bay (only once there are replicas); sign: the board text
-  function deck({ bay = true, sign = "OBJECT STORE · ONE FOR THE WHOLE CLUSTER" } = {}) {
+  function deck({ bay = true, sign = "OBJECT STORE · ONE FOR THE WHOLE CLUSTER", plan = DECK, board: boardW = 150 } = {}) {
+    const DECK = plan, DECK_TOP = plan.z + plan.t;
     const out = [`<path class="iso-halo" d="${k.haloOf(DECK, FLOOR, 2, P)}"/>`];
     const xs = [DECK.x + 5, DECK.x + DECK.w * 0.36, DECK.x + DECK.w * 0.7, DECK.x + DECK.w - 5];
     const ys = [DECK.y + 3, DECK.y + DECK.d - 3];
@@ -79,7 +80,7 @@ export function makeStage(k, G, P, parts) {
     }
     out.push(D(xs.flatMap((x) => [at([x, DECK.y + 1.4, DECK_TOP]), at([x, DECK.y + DECK.d - 1.4, DECK_TOP])]), { size: 0.45 }));
     // a sign board along the back edge, above the partitions, so the name is never covered
-    const board = { x: DECK.x + 8, y: DECK.y + 0.4, w: 150, d: 1.6, r: 0.4 };
+    const board = { x: DECK.x + 8, y: DECK.y + 0.4, w: boardW, d: 1.6, r: 0.4 };
     for (const x of [board.x + 6, board.x + board.w - 6]) out.push(S(k.slabOf({ x: x - 1, y: board.y, w: 2, d: 1.6, r: 0.3 }, DECK_TOP, 5, P, 2), { tone: "mid" }));
     out.push(S(k.slabOf(board, DECK_TOP + 5, 8, P, 2, 0.4), { tone: "mid" }));
     out.push(T(k.sideMatrix([board.x + 4, board.y + board.d], DECK_TOP + 7.6, P, "left"), sign, { size: 4.4, tone: "hi" }));

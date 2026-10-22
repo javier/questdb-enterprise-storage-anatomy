@@ -274,7 +274,9 @@ export function makeParts(k, G, P) {
   // The labels that depend on the policy: each mark with its TTL, what the local copy is
   // between the marks, and where the Parquet copies begin on the deck.
   // uploader: who puts the Parquet partitions in the object store, for the deck caption
-  function labelsSvg(g, { uploader = "uploaded once, only by replica 2" } = {}) {
+  // deck: whether to label the Parquet partitions on the deck (a figure with its own deck
+  // labels leaves it out)
+  function labelsSvg(g, { uploader = "uploaded once, only by replica 2", deck = true } = {}) {
     const { gates } = axisOf(g);
     const R = RULER, z = FLOOR;
     const out = [];
@@ -302,6 +304,7 @@ export function makeParts(k, G, P) {
       what[n].forEach((line, j) => out.push(label(pt, line, { dy: 24 + j * 10, sub: true })));
     });
     if (leaders.length) out.unshift(L(leaders.join(""), { tone: "mid" }) + D(pins, { size: 0.6, tone: "hi" }));
+    if (!deck) return out.join("");
     const cold = (X_END + gates[0]) / 2;
     out.push(label([cold, DECK.y + DECK.d, DECK.z], "PARQUET PARTITIONS", { dy: 13 }));
     out.push(label([cold, DECK.y + DECK.d, DECK.z], uploader, { dy: 25, sub: true }));

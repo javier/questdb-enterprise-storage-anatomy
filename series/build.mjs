@@ -22,6 +22,7 @@ const FIGURES = [
   { dir: "fig3-replication", lead: "Two replicas join. Replication runs through the same object store: the primary uploads WAL segments, and each replica polls, downloads and applies them at its own pace." },
   { dir: "fig4-cluster-policy", lead: "The storage policy across the cluster: each instance converts its own copy, one instance uploads for everyone, and the DROP LOCAL seal travels through the WAL." },
   { dir: "fig5-failover", lead: "Changing the primary, planned or not. In a switchover the operator demotes the primary, promotes a replica, does the maintenance and switches back. In a failure the primary dies, a replica is promoted, and the client replays what was never acknowledged." },
+  { dir: "fig6-backups", lead: "Backups are incremental by partition: each night uploads only what changed and points at older backups for the rest. Keeping the latest five also sets how much WAL the object store keeps, and so how far back point-in-time recovery reaches." },
 ];
 
 const parts = FIGURES.map(({ dir, lead }) => {
