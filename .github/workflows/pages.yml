@@ -1,0 +1,44 @@
+name: Deploy series to Pages
+
+on:
+  push:
+    branches: [live_page]   # runs when you merge main into live_page
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build site (light theme as default)
+        run: |
+          mkdir _site
+          cp -R series/. _site/
+          cd _site
+          mv index.html index-dark.html
+          mv index-light.html index.html
+          # Swap links between the two pages so the theme toggles keep working
+          find . -name '*.html' -exec sed -i \
+            -e 's/index-light\.html/__LIGHT__/g' \
+            -e 's/index\.html/index-dark.html/g' \
+            -e 's/__LIGHT__/index.html/g' {} +
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
