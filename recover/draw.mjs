@@ -1,16 +1,16 @@
 // The moving parts of Figs 7 and 8 at second s of a run. Pure: keyed items for the new
 // instance's partitions, markup for the rest.
 //
-// The source is Fig 6 held at one moment: its primary and its first replica, the object store
+// The source is Fig 7 held at one moment: its primary and its first replica, the object store
 // with the WAL tape, and the backup stand. Both keep running. The new instance stands on a
 // third bench at the front. Its partitions keep the source's places along the age axis, so a
-// recovered node's data visibly stops at the target. In Fig 8 a line on the floor marks the
+// recovered node's data visibly stops at the target. In Fig 9 a line on the floor marks the
 // boundary of the source cluster, and the recovered node's own store stands beside it.
 
 import { BENCH, FLOOR, HEAD, LANE_Y, RULER, X_NOW, axisOf } from "../fig1-partitions/parts.mjs";
 import { nameOf } from "../fig1-partitions/model.mjs";
-import { GRAIN, stateOf } from "../fig6-backups/backup.mjs";
-import { BACK, STORE6, WAL_Y, rowAt } from "../fig6-backups/draw.mjs";
+import { GRAIN, stateOf } from "../fig7-backups/backup.mjs";
+import { BACK, STORE6, WAL_Y, rowAt } from "../fig7-backups/draw.mjs";
 import { FLY, MODES, SOURCE_U, runOf } from "./restore.mjs";
 
 // the new instance on a third bench at the front, and the ruler in front of it
@@ -22,7 +22,7 @@ export const FENCE_Y = (LANE_Y[1] + NEW_Y) / 2;
 // the recovered node's own store, beside its head
 export const NEWSTORE = { x: 216, y: NEW_Y - 16, w: 60, d: 28, r: 2, z: 22, t: 3 };
 const NEW_TOP = NEWSTORE.z + NEWSTORE.t;
-const CHIP = 0.42; // the WAL cadence, in seconds, as in Fig 3
+const CHIP = 0.42; // the WAL cadence, in seconds, as in Fig 4
 const smooth = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
 
 export function makeRestore(k, P, parts, backups) {
@@ -169,7 +169,7 @@ export function makeRestore(k, P, parts, backups) {
       const ns = [NEWSTORE.x + NEWSTORE.w, NEWSTORE.y, NEWSTORE.z + NEWSTORE.t + 8];
       const own = mode === "cluster" && s >= st.after;
       W.push(parts.label(ns, mode === "cluster" ? "ITS OWN OBJECT STORE" : "COLD PREFIX COPY", { anchor: "start", dx: 6, dy: 4 }));
-      W.push(parts.label(ns, mode === "cluster" ? (own ? "new, empty WAL · cold prefix copy" : "cold prefix copy · WAL to come") : "for cold partitions only", { anchor: "start", dx: 6, dy: 14, sub: true }));
+      W.push(parts.label(ns, mode === "cluster" ? (own ? "new, empty WAL · cold prefix copy" : "cold prefix copy · WAL to come") : "for partitions past DROP LOCAL", { anchor: "start", dx: 6, dy: 14, sub: true }));
     }
 
     return { R, src, blocks, flying, marks, newWal, labels: W.join(""), newStore: shown, fence: pitr ? 1 : 0 };
@@ -185,12 +185,12 @@ export function storyOf7(mode, target, s, clock) {
   const prefixes = new Set(R.downloads.map((d) => d.holder)).size;
   switch (R.phase) {
     case "idle": return pitr ? `Recover to ${clock(target)} · start from the newest kept backup before it, ${clock(F.list[base])}` : `A second replica, built from the backup of ${clock(F.list[base])} instead of from an empty store`;
-    case "restore": return `_backup_restore · its manifest names ${R.downloads.length} partitions, fetched from ${prefixes} backup prefix${prefixes === 1 ? "" : "es"}; cold ones come back as _pm and index only`;
+    case "restore": return `_backup_restore · its manifest names ${R.downloads.length} partitions, fetched from ${prefixes} backup prefix${prefixes === 1 ? "" : "es"}; those past DROP LOCAL come back as _pm and index only`;
     case "reboot": return "Restart with _recover_point_in_time: the source's replication.object.store and replication.recovery.timestamp";
     case "replay": return pitr ? `Replaying WAL from the source store · up to the last commit at or before ${clock(to)}` : "role=replica: replaying WAL from the store to the latest; the older the backup, the more to replay";
     case "cut": return "Recovered · a fresh DataID, so it can never write into the source store; the source cluster carries on";
     default:
-      if (mode === "standalone") return `Standalone at ${clock(to)} · nothing replicates · cold partitions read from a copy of the cold prefix, never the live one`;
+      if (mode === "standalone") return `Standalone at ${clock(to)} · nothing replicates · partitions past DROP LOCAL read from a copy of the cold storage prefix, never the live one`;
       if (mode === "cluster") return "The primary of a new cluster, on its own empty object store · one that already holds replication data is refused";
       return "Replica 2 of the same cluster · same DataID, same stores · a base older than the WAL kept in the store fails with ER003";
   }

@@ -19,12 +19,13 @@ const latheScript = `const G = (() => {\n${strip(readFileSync(join(KIT_DIR, "lat
 const FIGURES = [
   { dir: "fig1-partitions", lead: "Partitions age through the storage policy. Each instance converts its own copy, one instance uploads for the whole cluster, and local data stays until DROP LOCAL." },
   { dir: "fig2-queries", lead: "A query reads what it can from the instance's own disk and the rest from the object store, and the mix shifts as data ages." },
-  { dir: "fig3-replication", lead: "Two replicas join. Replication runs through the same object store: the primary uploads WAL segments, and each replica polls, downloads and applies them at its own pace." },
-  { dir: "fig4-cluster-policy", lead: "The storage policy across the cluster: each instance converts its own copy, one instance uploads for everyone, and the DROP LOCAL seal travels through the WAL." },
-  { dir: "fig5-failover", lead: "Changing the primary, planned or not. In a switchover the operator demotes the primary, promotes a replica, does the maintenance and switches back. In a failure the primary dies, a replica is promoted, and the client replays what was never acknowledged." },
-  { dir: "fig6-backups", lead: "Backups are incremental by partition: each night uploads only what changed and points at older backups for the rest. Keeping the latest five also sets how much WAL the object store keeps, and so how far back point-in-time recovery reaches." },
-  { dir: "fig7-replica", lead: "Adding a replica without copying everything from the primary. A new instance restores a kept backup, replays the WAL since, and joins the cluster as replica 2." },
-  { dir: "fig8-pitr", lead: "Recovering to a moment, without touching the cluster. A new instance restores a kept backup, replays WAL up to the target, and leaves with a fresh DataID: as the primary of a new cluster, or standalone." },
+  { dir: "fig3-external", lead: "Cold storage is plain Parquet on Hive-style paths, so other engines can query it in place. They see everything TO REMOTE uploaded, and nothing newer." },
+  { dir: "fig4-replication", lead: "Two replicas join. Replication runs through the same object store: the primary uploads WAL segments, and each replica polls, downloads and applies them at its own pace." },
+  { dir: "fig5-cluster-policy", lead: "The storage policy across the cluster: each instance converts its own copy, one instance uploads for everyone, and the DROP LOCAL seal travels through the WAL." },
+  { dir: "fig6-failover", lead: "Changing the primary, planned or not. In a switchover the operator demotes the primary, promotes a replica, does the maintenance and switches back. In a failure the primary dies, a replica is promoted, and the client replays what was never acknowledged." },
+  { dir: "fig7-backups", lead: "Backups are incremental by partition: each night uploads only what changed and points at older backups for the rest. Keeping the latest five also sets how much WAL the object store keeps, and so how far back point-in-time recovery reaches." },
+  { dir: "fig8-replica", lead: "Adding a replica without copying everything from the primary. A new instance restores a kept backup, replays the WAL since, and joins the cluster as replica 2." },
+  { dir: "fig9-pitr", lead: "Recovering to a moment, without touching the cluster. A new instance restores a kept backup, replays WAL up to the target, and leaves with a fresh DataID: as the primary of a new cluster, or standalone." },
 ];
 
 const parts = FIGURES.map(({ dir, lead }) => {

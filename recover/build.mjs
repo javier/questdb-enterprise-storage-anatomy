@@ -1,7 +1,7 @@
-// Builds Fig 7 (a new replica from a backup) or Fig 8 (point-in-time recovery), which share
+// Builds Fig 8 (a new replica from a backup) or Fig 9 (point-in-time recovery), which share
 // this folder's model, drawing and live code:
-//   node recover/build.mjs --fig replica [--light]   writes fig7-replica/
-//   node recover/build.mjs --fig pitr [--light]      writes fig8-pitr/
+//   node recover/build.mjs --fig replica [--light]   writes fig8-replica/
+//   node recover/build.mjs --fig pitr [--light]      writes fig9-pitr/
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,21 +12,21 @@ import { nameOf } from "../fig1-partitions/model.mjs";
 import { FLOOR, FLY_Z, HEAD, LANE_Y, PQ_CSS, RULER, X_NOW, makeParts } from "../fig1-partitions/parts.mjs";
 import { itemsSvg, makeScene } from "../fig1-partitions/scene.mjs";
 import { AZIMUTH, DARK, benchPlan, makeStage } from "../fig1-partitions/stage.mjs";
-import { GRAIN } from "../fig6-backups/backup.mjs";
-import { C6, STAND, STORE6, makeBackups } from "../fig6-backups/draw.mjs";
+import { GRAIN } from "../fig7-backups/backup.mjs";
+import { C6, STAND, STORE6, makeBackups } from "../fig7-backups/draw.mjs";
 import { FIGURES, MODES, SOURCE_U, targetRange } from "./restore.mjs";
 import { NEW, NEWSTORE, makeRestore, storyOf7 } from "./draw.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
 const FIG1 = join(ROOT, "fig1-partitions");
-const FIG6 = join(ROOT, "fig6-backups");
+const FIG6 = join(ROOT, "fig7-backups");
 const KIT_DIR = "/Users/j/.claude/skills/anatomy/kit";
 const theme = process.argv.includes("--light") ? "light" : "dark";
 const fig = process.argv[process.argv.indexOf("--fig") + 1];
 if (!FIGURES[fig]) throw new Error("--fig replica | pitr");
 const pitr = fig === "pitr";
-const OUT = join(ROOT, pitr ? "fig8-pitr" : "fig7-replica");
+const OUT = join(ROOT, pitr ? "fig9-pitr" : "fig8-replica");
 const NAME = pitr ? "pitr" : "replica";
 const CLASS = pitr ? "sa-f8" : "sa-f7";
 const strip = (text) => text.replace(/^import .*$/gm, "").replace(/^export \{.*$/gm, "").replace(/^export /gm, "");
@@ -99,22 +99,22 @@ const BODY = [
 
 const TEXT = pitr
   ? {
-      fig: "Fig 8",
+      fig: "Fig 9",
       title: "Point-in-time recovery",
-      label: "Fig 6's cluster, a primary and a replica, keeps running at the back. In front of a line on the floor, a new, empty instance recovers to a chosen moment: it restores the newest kept backup before it, eight partitions at a time from the backup steps, then replays WAL from the source's tape up to the target, so its data stops at the target post. With a fresh DataID it leaves for good: as the primary of a new cluster on its own, empty object store, or standalone. Its cold partitions read from a copy of the cold prefix.",
+      label: "Fig 7's cluster, a primary and a replica, keeps running at the back. In front of a line on the floor, a new, empty instance recovers to a chosen moment: it restores the newest kept backup before it, eight partitions at a time from the backup steps, then replays WAL from the source's tape up to the target, so its data stops at the target post. With a fresh DataID it leaves for good: as the primary of a new cluster on its own, empty object store, or standalone. Partitions past DROP LOCAL read from a copy of the cold storage prefix.",
       lead: "Recovering to a moment, without touching the cluster. A new instance restores a kept backup, replays WAL up to the target, and leaves with a fresh DataID: as the primary of a new cluster, or standalone.",
       hint: "Pick a mode and a target · space pauses",
       caption:
-        "Point-in-time recovery builds a new instance in two boots and leaves the source cluster exactly as it was. The first boot, with an empty db/ and no replication configured, runs _backup_restore: the newest kept backup at or before the target, every partition its manifest names fetched from whichever backup prefix holds it, eight streams at a time by default. A cold partition comes back as its _pm and index only. The second boot runs _recover_point_in_time with the source's replication.object.store and replication.recovery.timestamp: it replays WAL up to the last commit at or before the target, then takes a fresh DataID. From then on it has nothing to do with the source. As the primary of a new cluster it needs a brand new, empty object store of its own, since one that already holds replication data is refused; standalone, it replicates nothing. Either way, if the table has cold partitions, point cold.storage.object.store at a copy of the cold prefix, with the role left at refresher, never at the live prefix the source cluster still manages. The target can reach back only to the oldest kept backup, where the WAL cleaner has trimmed the tape; aim earlier and recovery reports success with data missing.",
+        "Point-in-time recovery builds a new instance in two boots and leaves the source cluster exactly as it was. The first boot, with an empty db/ and no replication configured, runs _backup_restore: the newest kept backup at or before the target, every partition its manifest names fetched from whichever backup prefix holds it, eight streams at a time by default. A partition past DROP LOCAL comes back as its _pm and index only. The second boot runs _recover_point_in_time with the source's replication.object.store and replication.recovery.timestamp: it replays WAL up to the last commit at or before the target, then takes a fresh DataID. From then on it has nothing to do with the source. As the primary of a new cluster it needs a brand new, empty object store of its own, since one that already holds replication data is refused; standalone, it replicates nothing. Either way, if the table uses cold storage, point cold.storage.object.store at a copy of the cold storage prefix, with the role left at refresher, never at the live prefix the source cluster still manages. The target can reach back only to the oldest kept backup, where the WAL cleaner has trimmed the tape; aim earlier and recovery reports success with data missing.",
     }
   : {
-      fig: "Fig 7",
+      fig: "Fig 8",
       title: "Replica from backup",
-      label: "Fig 6's cluster, a primary and a first replica, keeps running. A second replica joins on the front bench: it restores a kept backup, eight partitions at a time from the backup steps, then replays WAL from the store's tape up to now and keeps following the primary like the first replica. Starting from the oldest kept backup takes the same restore but a longer replay.",
+      label: "Fig 7's cluster, a primary and a first replica, keeps running. A second replica joins on the front bench: it restores a kept backup, eight partitions at a time from the backup steps, then replays WAL from the store's tape up to now and keeps following the primary like the first replica. Starting from the oldest kept backup takes the same restore but a longer replay.",
       lead: "Adding a replica without copying everything from the primary. A new instance restores a kept backup, replays the WAL since, and joins the cluster as replica 2.",
       hint: "Pick the backup to start from · space pauses",
       caption:
-        "A second replica can start from a backup instead of an empty disk. It boots once, with _backup_restore naming the backup store and instance, replication.role=replica and the cluster's replication.object.store. The restore takes the backup's manifest and fetches every partition it names from whichever backup prefix holds it, eight streams at a time by default; a cold partition comes back as its _pm and index only and reads its data from the cluster's cold prefix, as a refresher. The node then replays WAL from the store, from the backup's txns to the latest, and keeps following the primary: it keeps the backup's DataID, so it belongs to this cluster. Any kept backup works; an older one means more WAL to replay. A base older than the WAL kept in the store fails with ER003, which is why the WAL cleaner trims only to the oldest kept backup. Give the new replica its own cairo.snapshot.instance.id.",
+        "A second replica can start from a backup instead of an empty disk. It boots once, with _backup_restore naming the backup store and instance, replication.role=replica and the cluster's replication.object.store. The restore takes the backup's manifest and fetches every partition it names from whichever backup prefix holds it, eight streams at a time by default; a partition past DROP LOCAL comes back as its _pm and index only and reads its data from the cluster's own cold storage prefix, as a refresher. The node then replays WAL from the store, from the backup's txns to the latest, and keeps following the primary: it keeps the backup's DataID, so it belongs to this cluster. Any kept backup works; an older one means more WAL to replay. A base older than the WAL kept in the store fails with ER003, which is why the WAL cleaner trims only to the oldest kept backup. Give the new replica its own cairo.snapshot.instance.id.",
     };
 
 const CONTROL_CSS =
@@ -161,12 +161,12 @@ const KEYS = [
   ["A partition on its way down from the backup step that holds it", tileBox, (sp, SP) => makeBackups(k, SP, sp).tileSvg(16, "native", true)],
   ["Native partition on an instance: one bar per column file", pallet, (sp) => sp.blockSvg(18, { m: 0 })],
   ["Parquet partition on an instance, with its _pm in solid blue", pallet, (sp) => sp.blockSvg(18, { m: 1 })],
-  ["Cold partition: only _pm and the index are local, the data is in cold storage", pallet, (sp) => sp.blockSvg(18, { m: 1, sealed: 1, evict: 1 })],
+  ["Past DROP LOCAL: only _pm and the index are local, the data is read from cold storage", pallet, (sp) => sp.blockSvg(18, { m: 1, sealed: 1, evict: 1 })],
   ["WAL segment, replayed from the tape in the object store (lit while replaying)", chipBox, (sp) => sp.chipSvg([0, 0, 0], true)],
   ...(pitr
     ? [
         ["Target: the recovered data stops at the last commit at or before it", k.boxCorners({ x: -2, y: -2, w: 4, d: 4 }, 0, 15), (sp, SP) => k.lineSvg(k.segment([0, 0, 0], [0, 0, 14], SP), { tone: "lit" }) + k.dotsSvg([k.iso([0, 0, 0], SP), k.iso([0, 0, 14], SP)], { size: 1, tone: "hi" })],
-        ["A copy of the cold prefix, in the recovered node's own store", k.boxCorners({ x: 0, y: -13, w: 18, d: 26 }, 0, 7), (sp) => sp.copySvg(18, 0, false)],
+        ["A copy of the cold storage prefix, in the recovered node's own store", k.boxCorners({ x: 0, y: -13, w: 18, d: 26 }, 0, 7), (sp) => sp.copySvg(18, 0, false)],
         ["The boundary of the source cluster, which the recovery never touches", k.boxCorners({ x: 0, y: -2, w: 20, d: 4 }, 0, 15), (sp, SP) => {
           let out = "";
           for (const x of [2, 10, 18]) out += k.solidSvg(k.cylinder(x, 0, 0.8, 0, 14, SP, 14), { tone: "mid" });
@@ -210,13 +210,13 @@ const live = [
 const file = theme === "light" ? `${NAME}-light.html` : `${NAME}.html`;
 writeFileSync(join(OUT, file), k.pageHtml({ title: TEXT.title, theme, body, script: kitScript() + latheScript() + live, width: 780 }));
 writeFileSync(join(OUT, `fragment-${theme}.json`), JSON.stringify({ html: body, script: live, lead: TEXT.lead }));
-console.log("wrote", join(pitr ? "fig8-pitr" : "fig7-replica", file));
+console.log("wrote", join(pitr ? "fig9-pitr" : "fig8-replica", file));
 
 const REACT = join(OUT, "react", pitr ? "PointInTimeRecovery" : "ReplicaFromBackup");
 for (const dir of ["kit", "fig1", "fig6", "recover"]) mkdirSync(join(REACT, dir), { recursive: true });
 for (const name of ["iso-kit.mjs", "lathe.mjs", "iso.css"]) copyFileSync(join(KIT_DIR, name), join(REACT, "kit", name));
 for (const name of ["model.mjs", "parts.mjs", "scene.mjs"]) copyFileSync(join(FIG1, name), join(REACT, "fig1", name));
-const up = (text) => text.replaceAll("../fig1-partitions/", "../fig1/").replaceAll("../fig6-backups/", "../fig6/");
+const up = (text) => text.replaceAll("../fig1-partitions/", "../fig1/").replaceAll("../fig7-backups/", "../fig6/");
 for (const name of ["backup.mjs", "draw.mjs"]) writeFileSync(join(REACT, "fig6", name), up(readFileSync(join(FIG6, name), "utf8")));
 for (const name of ["restore.mjs", "draw.mjs", "live.mjs"]) writeFileSync(join(REACT, "recover", name), up(readFileSync(join(HERE, name), "utf8")));
 writeFileSync(join(REACT, "plate.generated.mjs"), `// Generated by recover/build.mjs. Do not edit.\nexport const PLATE_HTML = ${JSON.stringify(body)};\nexport const DATA = ${JSON.stringify(DATA)};\n`);

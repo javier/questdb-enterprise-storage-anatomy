@@ -20,7 +20,7 @@ const GRAIN = "DAY";
 const U0 = PRESETS[GRAIN].start;
 
 // Fig 1 is about one table on one instance: the primary alone, which is then its own
-// cold storage manager. Fig 3 adds the replicas to the empty slots behind it.
+// cold storage manager. Fig 4 adds the replicas to the empty slots behind it.
 const C = SINGLE;
 const P = projectionOf(k, WIDTH, HEIGHT);
 const parts = makeParts(k, G, P);
@@ -125,7 +125,7 @@ const body =
     hint: "Hover a partition · space pauses · → next stage",
     readout: clockOf(GRAIN, U0) + " · " + nextWorkText(GRAIN, U0),
     keys: [],
-    caption: `The table carries ${policySql(GRAIN)}. The stages are independent, and each falls due when a partition's end is older than its TTL; the instance checks every 5 minutes. At TO REMOTE it uploads the partition to the object store as Parquet, while it keeps serving its local copy, still native. At TO PARQUET it converts that local copy. Nothing leaves local disk until DROP LOCAL: the partition is sealed read-only, and the instance drops its local data and keeps only _pm and the symbol index, reading the data from the object store. The table metadata in the head always stays local. The age axis is logarithmic, so recent partitions are wide and old ones close up. Fig 3 adds replicas to this picture.`,
+    caption: `The table carries ${policySql(GRAIN)}. The stages are independent, and each falls due when a partition's end is older than its TTL; the instance checks every 5 minutes. At TO REMOTE it uploads the partition to the object store as Parquet, while it keeps serving its local copy, still native. At TO PARQUET it converts that local copy. Nothing leaves local disk until DROP LOCAL: the partition is sealed read-only, and the instance drops its local data and keeps only _pm and the symbol index, reading the data from the object store. The table metadata in the head always stays local. The age axis is logarithmic, so recent partitions are wide and old ones close up. Fig 4 adds replicas to this picture.`,
     body: `${grainSwitch}<div class="iso-stage" tabindex="0" role="group" aria-label="Storage policy on one instance: hover a partition to read its state, Space pauses time, the right arrow skips to the next stage">${svg}</div>`,
   }).replace('<figcaption class="iso-legend">', '<figcaption class="iso-legend">' + keysHtml) +
   `</div>`;

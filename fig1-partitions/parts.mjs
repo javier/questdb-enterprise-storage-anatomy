@@ -362,11 +362,12 @@ export function makeParts(k, G, P) {
   }
 
   // The tiers along the ruler, for figures about reading: a query's read path changes at
-  // TO PARQUET (native to Parquet) and at DROP LOCAL (local to cold), not at TO REMOTE.
+  // TO PARQUET (native to Parquet) and at DROP LOCAL (local disk to cold storage), not at
+  // TO REMOTE: an uploaded partition is in cold storage but still read from local disk.
   function tiersSvg(g) {
     const { gates } = axisOf(g);
     const R = RULER, z = FLOOR;
-    const zones = [["NATIVE", gates[1], X_NOW], ["PARQUET", gates[2], gates[1]], ["COLD", R.x, gates[2]]];
+    const zones = [["NATIVE", gates[1], X_NOW], ["PARQUET", gates[2], gates[1]], ["FROM COLD STORAGE", R.x, gates[2]]];
     return zones.map(([s, a, b]) => label([(a + b) / 2, R.y + R.d, z], s, { dy: 13 })).join("");
   }
 
