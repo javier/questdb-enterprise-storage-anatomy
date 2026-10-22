@@ -1,4 +1,4 @@
-// The model behind Fig 1: one Enterprise table on a three-instance cluster,
+// The model behind Fig 2: one Enterprise table on a three-instance cluster,
 //   trades(ts TIMESTAMP, symbol SYMBOL INDEX, price DOUBLE, amount DOUBLE, venue VARCHAR)
 // with a storage policy whose stages are independent of each other. The default is the
 // common shape: PARTITION BY DAY with TO REMOTE 1 HOUR, TO PARQUET 3 DAYS, DROP LOCAL 1 MONTH.
@@ -34,7 +34,7 @@ export const PRESETS = {
 };
 export const GRAIN_ORDER = ["HOUR", "DAY", "MONTH"];
 // The fourth stage, DROP REMOTE: the partition leaves the table, and cold storage GC reclaims
-// its remote objects after a grace period. Only Fig 1 draws it: its build and live code set
+// its remote objects after a grace period. Only Fig 2 draws it: its build and live code set
 // POLICY.dropRemote before anything else runs, and every figure runs its own copy of this
 // module, so the others keep three stages and their axis.
 export const POLICY = { dropRemote: false };
@@ -147,7 +147,7 @@ export function managerCheck(g, C, t) {
 }
 export const managerAt = (C, t) => (C.schedule ? segmentAt(C, t) : { manager: C.manager, down: -1 });
 
-// Fig 5's manager scenarios, in partition widths (days), each ending where it began. From
+// Fig 7's manager scenarios, in partition widths (days), each ending where it began. From
 // operations/cold-storage.md: a handoff is TO REFRESHER on the manager (it flushes and
 // releases _manager.lock), then TO MANAGER on the replacement; uploads and GC pause between.
 // If the manager dies nothing takes over: a restarted instance finds the foreign lock and

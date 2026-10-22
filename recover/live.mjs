@@ -1,6 +1,6 @@
-// Live behaviour of Figs 7 and 8: one rebuild, played in seconds and looped, while the
-// source cluster keeps running. data.figure is "replica" (Fig 9: which backup to start
-// from) or "pitr" (Fig 10: new cluster or standalone, and the target on a slider). Changing
+// Live behaviour of Figs 11 and 12: one rebuild, played in seconds and looped, while the
+// source cluster keeps running. data.figure is "replica" (Fig 11: which backup to start
+// from) or "pitr" (Fig 12: new cluster or standalone, and the target on a slider). Changing
 // anything starts the run again; when nobody is driving, the tour walks the modes. Space
 // pauses. `stage` is the .iso-stage element, `data` = { P, figure }, `k` the iso kit, `G` the
 // lathe kit.
@@ -105,7 +105,6 @@ export function mount(stage, data, k, G) {
     if (!b) return;
     idle = 0;
     if (b.dataset.mode) choose(b.dataset.mode);
-    if (b.dataset.again !== undefined) s = 0;
     paused = false;
     render();
     run();
@@ -122,6 +121,8 @@ export function mount(stage, data, k, G) {
   if (slider) { slider.min = String(range.min); slider.max = String(range.max); slider.step = String(1 / 24); }
   // for checks and stills: a mode, a target (0..1 of the range) and a moment, paused
   stage.pick = (m, f, at) => { choose(m, range.min + (range.max - range.min) * f); s = at; paused = true; render(); };
+  // from the start, running: the series page's RESTART button
+  stage.restart = () => { s = 0; paused = false; render(); run(); };
   choose(mode, target);
   render();
   return () => {

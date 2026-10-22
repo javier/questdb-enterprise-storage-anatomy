@@ -1,4 +1,4 @@
-// The model behind Fig 4's WAL view: replication through the object store, in real seconds.
+// The model behind Fig 6's WAL view: replication through the object store, in real seconds.
 // Defaults as the code sets them (EntPropServerConfiguration) and the uploader
 // (wal/uploader/mod.rs):
 //   cairo.wal.segment.rollover.size          2 MiB   a segment closes and uploads at this size

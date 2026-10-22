@@ -1,4 +1,4 @@
-// Live behaviour of Fig 2. The cluster from Fig 1 keeps running: partitions age along the
+// Live behaviour of Fig 4. The cluster from Fig 2 keeps running: partitions age along the
 // benches, the manager uploads, instances convert and drop, WAL streams through the store.
 // The reader picks a time range and the columns to select, and the figure keeps lighting
 // what that query reads right now, on the instance running it and in the object store.
@@ -139,6 +139,8 @@ export function mount(stage, data, k, G) {
     if (at !== undefined) { u = at; paused = true; }
     draw();
   };
+  // from the start, running: the series page's RESTART button
+  stage.restart = () => { u = data.u0; t = 0; paused = false; draw(); run(); };
   draw();
   return () => {
     observer.disconnect();

@@ -1,4 +1,4 @@
-// The model behind Fig 6: failover with a store-and-forward client, as a small scripted
+// The model behind Fig 8: failover with a store-and-forward client, as a small scripted
 // simulation. The client, the three nodes and the object store follow their own rules;
 // an operator's commands are the script. Each run is recorded once, so the drawing is a
 // pure function of time and the loop replays it exactly.

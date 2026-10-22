@@ -1,4 +1,4 @@
-// Live behaviour of Fig 4: replication through the object store, in seconds. Commits fill
+// Live behaviour of Fig 6: replication through the object store, in seconds. Commits fill
 // the primary's open WAL segment; uploads land in the replication bay and update
 // index.msgpack; each replica polls, downloads what is new and applies it. When nobody is
 // driving, the load switches between light and heavy on its own. Space pauses.
@@ -28,7 +28,7 @@ export function mount(stage, data, k, G) {
 
   let load = "light";
   let tuning = "fast";
-  const sim = makeSim(load, 0, tuning);
+  let sim = makeSim(load, 0, tuning);
   sim.step(data.warm ?? 0);
   let paused = false;
   let frame = 0, last = 0, visible = false, feedPhase = 0;
@@ -94,6 +94,8 @@ export function mount(stage, data, k, G) {
   controls?.addEventListener("click", onClick);
   // for checks and stills: a load, then run the simulation forward, paused
   stage.pick = (l, seconds = 0) => { choose(l); sim.step(seconds); paused = true; draw(); };
+  // from the start, running: the series page's RESTART button
+  stage.restart = () => { sim = makeSim(load, 0, tuning); sim.step(data.warm ?? 0); paused = false; draw(); run(); };
   choose(load);
   draw();
   return () => {

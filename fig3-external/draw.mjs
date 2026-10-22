@@ -1,4 +1,4 @@
-// Fig 3's moving parts at time u. QuestDB reads as in Fig 2 (that figure's renderer draws
+// Fig 5's moving parts at time u. QuestDB reads as in Fig 4 (that figure's renderer draws
 // it). External engines stand on the far side of the object store, on a shelf behind the
 // deck at the deck's own height: QuestDB in front, cold storage in the middle, the other
 // engines beyond. In external mode all of them read at once, as they can in real life: the

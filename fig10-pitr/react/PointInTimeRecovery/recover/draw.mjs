@@ -1,10 +1,10 @@
-// The moving parts of Figs 7 and 8 at second s of a run. Pure: keyed items for the new
+// The moving parts of Figs 11 and 12 at second s of a run. Pure: keyed items for the new
 // instance's partitions, markup for the rest.
 //
-// The source is Fig 8 held at one moment: its primary and its first replica, the object store
+// The source is Fig 10 held at one moment: its primary and its first replica, the object store
 // with the WAL tape, and the backup stand. Both keep running. The new instance stands on a
 // third bench at the front. Its partitions keep the source's places along the age axis, so a
-// recovered node's data visibly stops at the target. In Fig 10 a line on the floor marks the
+// recovered node's data visibly stops at the target. In Fig 12 a line on the floor marks the
 // boundary of the source cluster, and the recovered node's own store stands beside it.
 
 import { BENCH, FLOOR, HEAD, LANE_Y, RULER, X_NOW, axisOf } from "../fig1/parts.mjs";
@@ -22,7 +22,7 @@ export const FENCE_Y = (LANE_Y[1] + NEW_Y) / 2;
 // the recovered node's own store, beside its head
 export const NEWSTORE = { x: 216, y: NEW_Y - 16, w: 60, d: 28, r: 2, z: 22, t: 3 };
 const NEW_TOP = NEWSTORE.z + NEWSTORE.t;
-const CHIP = 0.42; // the WAL cadence, in seconds, as in Fig 4
+const CHIP = 0.42; // the WAL cadence, in seconds, as in Fig 6
 const smooth = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
 
 export function makeRestore(k, P, parts, backups) {

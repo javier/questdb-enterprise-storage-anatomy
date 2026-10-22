@@ -1,5 +1,5 @@
-// Live behaviour of Fig 7: three days of object store outage and the recovery after it,
-// played at Fig 1's pace (a day every UNIT_SECONDS) and looped. Space pauses.
+// Live behaviour of Fig 9: three days of object store outage and the recovery after it,
+// played at Fig 2's pace (a day every UNIT_SECONDS) and looped. Space pauses.
 // `stage` is the .iso-stage element, `data` = { P }, `k` the iso kit, `G` the lathe kit.
 import { UNIT_SECONDS, clockOf } from "./fig1/model.mjs";
 import { makeParts } from "./fig1/parts.mjs";
@@ -90,6 +90,8 @@ export function mount(stage, data, k, G) {
   stage.addEventListener("keydown", onKey);
   // for checks and stills: a moment, paused
   stage.seek = (v, s = 0) => { u = v; t = s; paused = true; render(); };
+  // from the start, running: the series page's RESTART button
+  stage.restart = () => { u = data.u0 ?? U_START; t = 0; paused = false; render(); run(); };
   render();
   return () => {
     observer.disconnect();

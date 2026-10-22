@@ -1,4 +1,4 @@
-// The model behind Fig 1: one Enterprise table on a three-instance cluster,
+// The model behind Fig 2: one Enterprise table on a three-instance cluster,
 //   trades(ts TIMESTAMP, symbol SYMBOL INDEX, price DOUBLE, amount DOUBLE, venue VARCHAR)
 // with a storage policy whose stages are independent of each other. The default is the
 // common shape: PARTITION BY DAY with TO REMOTE 1 HOUR, TO PARQUET 3 DAYS, DROP LOCAL 1 MONTH.
@@ -34,11 +34,13 @@ export const PRESETS = {
 };
 export const GRAIN_ORDER = ["HOUR", "DAY", "MONTH"];
 // The fourth stage, DROP REMOTE: the partition leaves the table, and cold storage GC reclaims
-// its remote objects after a grace period. Only Fig 1 draws it: its build and live code set
+// its remote objects after a grace period. Only Fig 2 draws it: its build and live code set
 // POLICY.dropRemote before anything else runs, and every figure runs its own copy of this
 // module, so the others keep three stages and their axis.
 export const POLICY = { dropRemote: false };
-export const DROP_REMOTE = { HOUR: ["DROP REMOTE", "1 WEEK", "1W"], DAY: ["DROP REMOTE", "3 MONTHS", "3M"], MONTH: ["DROP REMOTE", "3 YEARS", "3Y"] };
+// Remote retention is long by design: a year at least; three for monthly partitions, whose
+// DROP LOCAL is already a year.
+export const DROP_REMOTE = { HOUR: ["DROP REMOTE", "1 YEAR", "1Y"], DAY: ["DROP REMOTE", "1 YEAR", "1Y"], MONTH: ["DROP REMOTE", "3 YEARS", "3Y"] };
 export const GC_GRACE_MINUTES = 30; // cold.storage.gc.partition.grace.period
 export const stagesOf = (g) => (POLICY.dropRemote ? [...PRESETS[g].stages, DROP_REMOTE[g]] : PRESETS[g].stages);
 export const policySql = (g) => "PARTITION BY " + g + " · STORAGE POLICY(" + stagesOf(g).map(([s, t]) => s + " " + t).join(", ") + ")";
@@ -81,11 +83,11 @@ const unitsBetween = (g, a, b) => {
 // The exact TTL of stage k for partition p, in partition widths (calendar months vary).
 export function ttlOf(g, k, p) {
   const end = dateOf(g, p + 1 + 1e-9);
-  if (g === "HOUR") return [1, 6, 24, 168][k];
+  if (g === "HOUR") return [1, 6, 24, 8760][k];
   if (g === "DAY") {
     if (k === 0) return 1 / 24;
     if (k === 1) return 3;
-    const months = k === 2 ? 1 : 3;
+    const months = k === 2 ? 1 : 12;
     const later = Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + months, end.getUTCDate());
     return unitsBetween(g, end.getTime(), later);
   }
@@ -93,7 +95,10 @@ export function ttlOf(g, k, p) {
   return [0, 1, 12, 36][k];
 }
 // The nominal TTLs, where the marks on the floor are drawn.
-const NOMINAL = { HOUR: [1, 6, 24, 168], DAY: [1 / 24, 3, 30, 91.3], MONTH: [1 / 30.44, 1, 12, 36] };
+const NOMINAL = { HOUR: [1, 6, 24, 8760], DAY: [1 / 24, 3, 30, 365.25], MONTH: [1 / 30.44, 1, 12, 36] };
+// With a year on the log axis, partitions older than this are thinner than a pixel: they are
+// drawn as one strip instead of one by one (see scene.mjs).
+export const DRAW_AGE = { HOUR: 80, DAY: 110, MONTH: 48 };
 export const nominal = (g) => NOMINAL[g].slice(0, POLICY.dropRemote ? 4 : 3);
 // the axis runs a little past the last stage, so a partition is seen leaving
 export const axisEnd = (g) => (POLICY.dropRemote ? 1.12 * NOMINAL[g][3] : 2 * NOMINAL[g][2]);
@@ -142,7 +147,7 @@ export function managerCheck(g, C, t) {
 }
 export const managerAt = (C, t) => (C.schedule ? segmentAt(C, t) : { manager: C.manager, down: -1 });
 
-// Fig 5's manager scenarios, in partition widths (days), each ending where it began. From
+// Fig 7's manager scenarios, in partition widths (days), each ending where it began. From
 // operations/cold-storage.md: a handoff is TO REFRESHER on the manager (it flushes and
 // releases _manager.lock), then TO MANAGER on the replacement; uploads and GC pause between.
 // If the manager dies nothing takes over: a restarted instance finds the foreign lock and
@@ -238,8 +243,20 @@ export function lampOf(g, i, u, partitions, C = CLUSTER) {
 // Partitions on the benches at time u, oldest first.
 export function partitionsAt(g, u) {
   const out = [];
-  for (let p = Math.floor(u - axisEnd(g)) - 1; p <= Math.floor(u); p++) out.push(p);
+  const oldest = POLICY.dropRemote ? Math.max(u - axisEnd(g), u - DRAW_AGE[g]) : u - axisEnd(g);
+  for (let p = Math.floor(oldest) - 1; p <= Math.floor(u); p++) out.push(p);
   return out;
+}
+// The next moment stage k falls due for any partition after u: the partitions around that
+// stage's age are the only candidates, so nothing scans the whole axis.
+export function nextDue(g, k, u) {
+  let at = Infinity;
+  const age = nominal(g)[k];
+  for (let p = Math.floor(u - age - 3); p <= Math.floor(u - age + 2); p++) {
+    const t = p + 1 + ttlOf(g, k, p);
+    if (t > u + 1e-9 && t < at) at = t;
+  }
+  return at;
 }
 
 export function clockOf(g, u) {
@@ -298,11 +315,7 @@ export function partitionText(g, p, u, C = CLUSTER) {
 export function nextWorkText(g, u) {
   return stagesOf(g)
     .map(([s], k) => {
-      let at = Infinity;
-      for (const p of partitionsAt(g, u)) {
-        const t = p + 1 + ttlOf(g, k, p);
-        if (t > u + 1e-9 && t < at) at = t;
-      }
+      const at = nextDue(g, k, u);
       return at < Infinity ? s + " in " + durationOf(g, at - u) : "";
     })
     .filter(Boolean)

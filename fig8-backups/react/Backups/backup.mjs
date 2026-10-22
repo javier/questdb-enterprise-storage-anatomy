@@ -1,6 +1,6 @@
-// The model behind Fig 8: incremental backups of the primary, their retention, and the WAL
+// The model behind Fig 10: incremental backups of the primary, their retention, and the WAL
 // cleaner that trims the replication store to the oldest backup kept. Pure: every answer
-// is a function of the time u (in partition widths, PARTITION BY DAY, as in Fig 1) and the
+// is a function of the time u (in partition widths, PARTITION BY DAY, as in Fig 2) and the
 // list of backup times.
 //
 // From the code (questdb-ent rust/qdb-ent/src/backup and wal/uploader/cleaner.rs):

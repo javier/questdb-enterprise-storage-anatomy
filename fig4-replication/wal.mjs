@@ -1,5 +1,5 @@
-// Fig 4's WAL view, drawn from the replication simulation at one moment. Pure: given the
-// simulation state it returns markup for each layer. The benches stay as Fig 1 left them;
+// Fig 6's WAL view, drawn from the replication simulation at one moment. Pure: given the
+// simulation state it returns markup for each layer. The benches stay as Fig 2 left them;
 // what moves is the WAL: the primary's open segment on the gauge on its face, the throttle
 // window on its dial, uploads into the replication bay, index.msgpack updating, and each
 // replica polling, downloading and applying.
@@ -20,7 +20,7 @@ export function makeWal(k, P, parts) {
     const w = 2.4 + 6.4 * Math.min(1, (bytes * ZSTD) / SEGMENT_MAX);
     return S(k.slabOf({ x: x - w / 2, y: y - 2.8, w, d: 5.6, r: 0.6 }, z, 3, P, 2, 0.3), hot ? lit : plain);
   };
-  // newest at the right end of the bay, on wider slots than Fig 1 used
+  // newest at the right end of the bay, on wider slots than Fig 2 used
   const slotOf = (rank) => [DECK.x + DECK.w - 7 - rank * 10, STORE_Y + 3, DECK_TOP];
 
   return function render(sim) {

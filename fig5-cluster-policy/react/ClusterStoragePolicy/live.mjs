@@ -1,9 +1,9 @@
-// Live behaviour of Fig 1. Time runs at one partition width per UNIT_SECONDS; every
+// Live behaviour of Fig 2. Time runs at one partition width per UNIT_SECONDS; every
 // moving part is redrawn from the pure model for the current time. Hover a partition to
 // light it on every instance and on the deck; Space pauses; the right arrow skips to just
 // before the next stage falls due; the PARTITION BY switch changes the grain and policy.
 // `stage` is the .iso-stage element, `data` = { P, grain }, `k` the iso kit, `G` the lathe kit.
-import { CLUSTER, INSTANCES, MANAGER_MODES, POLICY, PRESETS, SINGLE, UNIT_SECONDS, clockOf, clusterFor, eventsOf, managerAt, nextWorkText, partitionText, partitionsAt, policySql, stagesOf, ttlOf } from "./model.mjs";
+import { CLUSTER, INSTANCES, MANAGER_MODES, POLICY, PRESETS, SINGLE, UNIT_SECONDS, clockOf, clusterFor, eventsOf, managerAt, nextDue, nextWorkText, partitionText, partitionsAt, policySql, stagesOf, ttlOf } from "./model.mjs";
 import { DECK, HEAD, LANE_Y, makeParts } from "./parts.mjs";
 import { makeScene, ticksOf } from "./scene.mjs";
 import { LATE, lateText, makeLate } from "./late.mjs";
@@ -12,12 +12,12 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 export function mount(stage, data, k, G) {
   const { P } = data;
-  if (data.dropRemote) POLICY.dropRemote = true; // Fig 1 draws the fourth stage
+  if (data.dropRemote) POLICY.dropRemote = true; // Fig 2 draws the fourth stage
   let C = data.cluster === "single" ? SINGLE : CLUSTER;
-  let managerMode = "steady"; // Fig 5: who holds the cold storage manager role, over time
+  let managerMode = "steady"; // Fig 7: who holds the cold storage manager role, over time
   const parts = makeParts(k, G, P);
   const render = makeScene(k, P, parts);
-  const late = data.lateWrites ? makeLate(k, P, parts) : null; // Fig 1 shows late writes
+  const late = data.lateWrites ? makeLate(k, P, parts) : null; // Fig 2 shows late writes
   const svg = stage.querySelector("svg");
   const figure = stage.closest(".iso-figure");
   const one = (name) => svg.querySelector(`[data-part="${name}"]`);
@@ -87,7 +87,7 @@ export function mount(stage, data, k, G) {
     if (t !== ticks) { put(layers.dial, parts.dialSvg(t)); ticks = t; }
     say();
   }
-  // Fig 5's manager scenarios: who holds _manager.lock, the commands as they are issued, and
+  // Fig 7's manager scenarios: who holds _manager.lock, the commands as they are issued, and
   // the bench of an instance that is down fading back
   const NAMES5 = ["primary", "replica 1", "replica 2"];
   function managerState() {
@@ -165,9 +165,9 @@ export function mount(stage, data, k, G) {
   // just before the next stage falls due for any partition
   function skip() {
     let best = Infinity;
-    for (const p of partitionsAt(grain, u)) stagesOf(grain).forEach((_, n) => {
-      const t = p + 1 + ttlOf(grain, n, p);
-      if (t > u + 0.02 && t < best) best = t;
+    stagesOf(grain).forEach((_, n) => {
+      const t = nextDue(grain, n, u + 0.02);
+      if (t < best) best = t;
     });
     if (best < Infinity) u = best - 0.01;
     draw();
@@ -201,6 +201,8 @@ export function mount(stage, data, k, G) {
   group?.addEventListener("click", onClick);
   // for checks and stills: jump to a moment, paused
   stage.seek = (g, v, mode) => { if (g !== grain) setGrain(g); if (mode) setManager(mode); u = v; paused = true; draw(); };
+  // from the start, running: the series page's RESTART button
+  stage.restart = () => { u = PRESETS[grain].start; paused = false; draw(); describe(); run(); };
   describe();
   draw();
   return () => {

@@ -1,4 +1,4 @@
-// The model behind Fig 2: one SELECT on the trades table from Fig 1, while the cluster
+// The model behind Fig 4: one SELECT on the trades table from Fig 2, while the cluster
 // keeps running (PARTITION BY DAY, TO REMOTE 1 HOUR, TO PARQUET 3 DAYS, DROP LOCAL 1 MONTH).
 //
 // The instance that receives the query (here the primary) serves every partition it can from its
@@ -19,7 +19,7 @@ import { ROW_GROUPS } from "../fig1/parts.mjs";
 
 export const GRAIN = "DAY";
 export const SERVER = 0; // the primary runs the query
-export const C = SINGLE; // one instance; replicas arrive in Fig 4
+export const C = SINGLE; // one instance; replicas arrive in Fig 6
 
 // Projected columns, in file order, and the column-file bars each one maps to.
 export const COLUMNS = [

@@ -1,4 +1,4 @@
-// The model behind Fig 3: the same SELECT as Fig 2, run by QuestDB or by an external
+// The model behind Fig 5: the same SELECT as Fig 4, run by QuestDB or by an external
 // engine that reads cold storage directly.
 //
 // From the cold storage docs (concepts/cold-storage.md, tutorials/questdb-to-iceberg.md):

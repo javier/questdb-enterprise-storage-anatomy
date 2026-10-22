@@ -1,4 +1,4 @@
-// Fig 7's moving parts at time u: Fig 8's cluster (primary, replica, object store with the
+// Fig 9's moving parts at time u: Fig 10's cluster (primary, replica, object store with the
 // WAL tape, backup stand) through an object store outage, plus a durable-ACK client at the
 // end of the feed with its store-and-forward buffer as a gauge.
 
@@ -7,10 +7,10 @@ import { eventsOf, nameOf, partitionsAt } from "../fig1-partitions/model.mjs";
 import { STAND, STORE6 } from "../fig8-backups/draw.mjs";
 import { C7, CATCH_UP, FAILED, GRAIN, SF_CAP_GIB, W0, W1, backlogOf, bufferOf, fullAt, lagOf, phaseOf, waitingOf } from "./outage.mjs";
 
-// the client past the end of the feed, drawn as Fig 6's: a box on feet with its
+// the client past the end of the feed, drawn as Fig 8's: a box on feet with its
 // store-and-forward ring on top, one cell lit per share of the buffer in use
 export const CLIENT7 = { x: FEED.x1 + 8, y: FEED.y - 9, w: 30, d: 18, h: 12 };
-const CELLS = 60; // two rows of 30, as in Fig 6
+const CELLS = 60; // two rows of 30, as in Fig 8
 const PORT7 = [CLIENT7.x, CLIENT7.y + CLIENT7.d / 2, 9];
 
 export function makeOutage(k, P, parts, scene, backups) {
@@ -20,7 +20,7 @@ export function makeOutage(k, P, parts, scene, backups) {
   const at = (pt) => k.iso(pt, P);
   const slab = (plan, z, h, style) => S(k.slabOf(plan, z, h, P, 2, Math.min(0.3, h / 3)), style);
 
-  // the client, static, as Fig 6 draws it: feet, the case with its seam, the ring's panel
+  // the client, static, as Fig 8 draws it: feet, the case with its seam, the ring's panel
   // and the port facing the feed
   function clientSvg() {
     const { x, y, w, d, h } = CLIENT7;
@@ -31,7 +31,7 @@ export function makeOutage(k, P, parts, scene, backups) {
     out += S(k.cylinder(PORT7[0], PORT7[1], 1.5, 7.5, 3, P, 18), { tone: "mid" });
     return out;
   }
-  // the ring: a lit cell per sixtieth of the buffer in use, as Fig 6 lights unacknowledged frames
+  // the ring: a lit cell per sixtieth of the buffer in use, as Fig 8 lights unacknowledged frames
   function gaugeSvg(gib) {
     const { x, y, d, h } = CLIENT7;
     const n = Math.round(Math.min(1, gib / SF_CAP_GIB) * CELLS);

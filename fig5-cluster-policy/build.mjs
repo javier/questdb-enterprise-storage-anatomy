@@ -1,5 +1,5 @@
-// Fig 5: the storage policy from Fig 1 running across the cluster from Fig 4. Built from
-// Fig 1's modules with the full cluster (CLUSTER): each instance converts its own copy,
+// Fig 7: the storage policy from Fig 2 running across the cluster from Fig 6. Built from
+// Fig 2's modules with the full cluster (CLUSTER): each instance converts its own copy,
 // only replica 2, the cold storage manager, uploads, and the DROP LOCAL seal travels
 // through the WAL. This is the three-instance figure from before the series was split.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -134,12 +134,12 @@ const body =
   PAGE_CSS +
   `<div class="sa-plate sa-f4">` +
   k.plateHtml({
-    fig: "Fig 5",
+    fig: "Fig 7",
     title: "Storage policy across the cluster",
     hint: "Hover a partition · space pauses · → next stage",
     readout: clockOf(GRAIN, U0) + " · " + nextWorkText(GRAIN, U0),
     keys: [],
-    caption: `The table from Fig 1, ${policySql(GRAIN)}, now on the cluster from Fig 4. The policy is replicated, and each instance checks it every 5 minutes on its own, so the three can briefly disagree. TO REMOTE runs only on the cold storage manager, here replica 2: it uploads each partition once, as Parquet, for the whole cluster, while every instance keeps serving its own local copy, still native. TO PARQUET converts each instance's own local copy. Nothing leaves local disk until DROP LOCAL: the primary writes a seal into the WAL, the manager marks the uploaded partition Sealed, and each instance then drops its local data and keeps only _pm and the symbol index, reading the data from the one Parquet partition on the deck. The cold storage manager role is separate from the primary and replica roles, and it can move: HANDOFF runs SWITCH COLD STORAGE ROLE TO REFRESHER on the manager, which flushes its manifests and releases _manager.lock in the object store, then TO MANAGER on the replacement; uploads and garbage collection pause in between while reads carry on, and server.conf should then be updated, since a restart boots into cold.storage.role. MANAGER DIES shows the other case: nothing takes over on its own, uploads stop, and partitions due for DROP LOCAL keep their local data, since it is never dropped without a durable remote copy. A restarted instance finds the foreign lock and stays a refresher, so an operator proves the old manager dead and runs TO MANAGER FORCE elsewhere; the backlog then uploads. The age axis is logarithmic, so recent partitions are wide and old ones close up.`,
+    caption: `The table from Fig 2, ${policySql(GRAIN)}, now on the cluster from Fig 6. The policy is replicated, and each instance checks it every 5 minutes on its own, so the three can briefly disagree. TO REMOTE runs only on the cold storage manager, here replica 2: it uploads each partition once, as Parquet, for the whole cluster, while every instance keeps serving its own local copy, still native. TO PARQUET converts each instance's own local copy. Nothing leaves local disk until DROP LOCAL: the primary writes a seal into the WAL, the manager marks the uploaded partition Sealed, and each instance then drops its local data and keeps only _pm and the symbol index, reading the data from the one Parquet partition on the deck. The cold storage manager role is separate from the primary and replica roles, and it can move: HANDOFF runs SWITCH COLD STORAGE ROLE TO REFRESHER on the manager, which flushes its manifests and releases _manager.lock in the object store, then TO MANAGER on the replacement; uploads and garbage collection pause in between while reads carry on, and server.conf should then be updated, since a restart boots into cold.storage.role. MANAGER DIES shows the other case: nothing takes over on its own, uploads stop, and partitions due for DROP LOCAL keep their local data, since it is never dropped without a durable remote copy. A restarted instance finds the foreign lock and stays a refresher, so an operator proves the old manager dead and runs TO MANAGER FORCE elsewhere; the backlog then uploads. The age axis is logarithmic, so recent partitions are wide and old ones close up.`,
     body: `${grainSwitch}<div class="iso-stage" tabindex="0" role="group" aria-label="Storage policy across a cluster: hover a partition to read its state, Space pauses time, the right arrow skips to the next stage">${svg}</div>`,
   }).replace('<figcaption class="iso-legend">', '<figcaption class="iso-legend">' + keysHtml) +
   `</div>`;

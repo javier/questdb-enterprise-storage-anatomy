@@ -1,4 +1,4 @@
-// Live behaviour of Fig 6: a planned switchover or an unplanned failure, played in real
+// Live behaviour of Fig 8: a planned switchover or an unplanned failure, played in real
 // time and looped; every loop starts again from a healthy cluster. The reader picks the
 // scenario and durable or plain ACK; when nobody is driving, a tour plays the planned
 // switchover, then the failure with durable ACK, then with plain ACK. REPLAY starts the
@@ -95,6 +95,8 @@ export function mount(stage, data, k, G) {
   controls?.addEventListener("click", onClick);
   // for checks and stills: a scenario, a mode and a moment, paused
   stage.pick = (sc, m, at) => { choose(sc, m); t = at; paused = true; render(); };
+  // from the start, running: the series page's RESTART button
+  stage.restart = () => { t = data.t0 ?? 1; paused = false; render(); run(); };
   choose(scenario, mode);
   render();
   return () => {
